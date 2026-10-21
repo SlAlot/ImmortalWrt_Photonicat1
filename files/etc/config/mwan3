@@ -1,5 +1,5 @@
 # mwan3 三链路严格优先级故障转移
-#   wan(eth0) > wwan(wifi桥接, 预留) > wwan_5g(usb0)
+#   wan(eth0) > wwan(wifi桥接, 预留) > QModem 自动发现的蜂窝接口
 # 优先级由 member 的 metric 决定, 数值越小越优先;
 # 高优先级链路恢复后, mwan3 自动切回(以下 up/down 参数控制判定快慢).
 # IPv6 不纳入 mwan3 管理 —— 无 v6 规则, 让 v6 走 main 表.
@@ -49,18 +49,6 @@ config interface 'wwan'
 	list track_ip '1.1.1.1'
 	list flush_conntrack 'disconnected'
 
-config interface 'wwan_5g'
-	option enabled '1'
-	option family 'ipv4'
-	option reliability '2'
-	option timeout '3'
-	option interval '5'
-	option down '3'
-	option up '3'
-	list track_ip '223.5.5.5'
-	list track_ip '180.76.76.76'
-	list track_ip '119.29.29.29'
-	list flush_conntrack 'disconnected'
 
 # ---------------- 成员: metric 即优先级 ----------------
 
@@ -74,17 +62,13 @@ config member 'wwan_m2'
 	option metric '2'
 	option weight '1'
 
-config member 'wwan5g_m3'
-	option interface 'wwan_5g'
-	option metric '3'
-	option weight '1'
 
 # ---------------- 策略 ----------------
 
 config policy 'failover'
+	option last_resort 'default'
 	list use_member 'wan_m1'
 	list use_member 'wwan_m2'
-	list use_member 'wwan5g_m3'
 
 # ---------------- 规则 (仅 IPv4) ----------------
 

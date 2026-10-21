@@ -1,0 +1,29 @@
+#!/bin/sh
+# Apply identity and homepage defaults once; preserve user settings afterwards.
+uci set 'system.@system[0].hostname=S-Photonicat1'
+uci set luci.main.lang='zh_cn'
+
+# QuickStart is a homepage on this firmware, not an iStoreOS OTA target.
+uci set quickstart.main=quickstart
+uci set quickstart.main.disable_update_check='1'
+
+# Register an explicit homepage with a stable order, alongside the upstream
+# wildcard route. Keep the standard status overview available for diagnostics.
+uci set luci.main.mediaurlbase='/luci-static/argon'
+
+# Auto mode uses QModem's shared service when present. Do not claim its AT port.
+uci set network_panel.main=core
+uci set network_panel.main.backend_mode='auto'
+uci set network_panel.main.boot_enabled='1'
+
+uci commit system
+uci commit luci
+uci commit quickstart
+uci commit network_panel
+
+for service in quickstart wlmb-server dockerd; do
+    [ ! -x "/etc/init.d/$service" ] || "/etc/init.d/$service" enable
+done
+
+rm -f /tmp/luci-indexcache /tmp/luci-indexcache.*
+exit 0

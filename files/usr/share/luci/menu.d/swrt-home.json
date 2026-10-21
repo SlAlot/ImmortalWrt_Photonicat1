@@ -1,0 +1,13 @@
+{
+  "admin/quickstart": {
+    "title": "QuickStart",
+    "order": 0,
+    "action": {
+      "type": "template",
+      "path": "quickstart/home"
+    },
+    "depends": {
+      "fs": { "/usr/sbin/quickstart": "executable" }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+#!/bin/sh
+# QModem creates its own IPv4 interfaces. Add them to the existing failover
+# policy without assuming usb0 or racing the dialer's network config lock.
+[ "$ACTION" = ifup ] || exit 0
+case "$INTERFACE" in ''|*[!A-Za-z0-9_]*) exit 0 ;; esac
+[ -x /etc/init.d/mwan3 ] || exit 0
+[ "$(uci -q get "mwan3.failover")" = policy ] || exit 0
+owner=$(uci -q get "network.$INTERFACE.modem_config")
+case "$owner" in ''|*[!A-Za-z0-9_]*) exit 0 ;; esac
+[ "$(uci -q get "qmodem.$owner")" = modem-device ] || exit 0
+expected=$(uci -q get "qmodem.$owner.alias")
+if [ -z "$expected" ] || [ "$expected" = '-' ]; then
+    expected="$owner"
+fi
+[ "$INTERFACE" = "$expected" ] || exit 0
+[ "$(uci -q get "network.$INTERFACE.proto")" != dhcpv6 ] || exit 0
+
+exec 9>/var/lock/swrt-qmodem-mwan.lock
+flock -x 9 || exit 1
+member="swrt_$INTERFACE"
+# The hook only initializes its own member. Manual policy edits remain intact.
+[ "$(uci -q get "mwan3.$member")" != member ] || exit 0
+if ! uci -q get "mwan3.$INTERFACE" >/dev/null; then
+    uci set "mwan3.$INTERFACE=interface"
+    uci set "mwan3.$INTERFACE.enabled=1"
+    uci set "mwan3.$INTERFACE.family=ipv4"
+    uci set "mwan3.$INTERFACE.track_method=ping"
+    uci set "mwan3.$INTERFACE.reliability=1"
+    uci set "mwan3.$INTERFACE.interval=5"
+    uci set "mwan3.$INTERFACE.timeout=3"
+    uci set "mwan3.$INTERFACE.down=3"
+    uci set "mwan3.$INTERFACE.up=3"
+    uci add_list "mwan3.$INTERFACE.track_ip=223.5.5.5"
+    uci add_list "mwan3.$INTERFACE.track_ip=119.29.29.29"
+fi
+uci set "mwan3.$member=member"
+uci set "mwan3.$member.interface=$INTERFACE"
+uci set "mwan3.$member.metric=3"
+uci set "mwan3.$member.weight=1"
+uci add_list "mwan3.failover.use_member=$member"
+uci commit mwan3
+flock -u 9
+/etc/init.d/mwan3 reload
+exit 0

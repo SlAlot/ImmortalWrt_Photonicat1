@@ -1,0 +1,114 @@
+name: Build SWRT Photonicat1
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.config', 'feeds.conf.default', 'sources.lock.json', 'diy.sh', 'files/**', 'package/**', 'scripts/**', 'tests/**', '.github/workflows/**']
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: swrt-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check scripts and integration invariants
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck
+          bash -n scripts/prepare.sh diy.sh
+          shellcheck scripts/prepare.sh diy.sh
+          shellcheck -s sh -e SC1091 files/etc/uci-defaults/99-swrt files/etc/hotplug.d/iface/95-swrt-qmodem-mwan
+          python3 -m unittest discover -s tests -v
+          git diff --check
+  build:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare build disk and dependencies
+        run: |
+          # Only remove preinstalled toolchains on this disposable GitHub runner.
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          sudo docker image prune -a -f
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+            gettext git libncurses-dev libssl-dev python3 python3-setuptools python3-pyelftools \
+            rsync swig unzip zlib1g-dev file wget curl ccache cmake ninja-build \
+            libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libmpc-dev libmpfr-dev \
+            libreadline-dev libtool autoconf automake autopoint pkgconf subversion \
+            device-tree-compiler xsltproc libxml-parser-perl patch tar xz-utils zstd
+          df -h
+      - name: Read pinned source revision
+        id: source
+        run: |
+          echo "sha=$(python3 -c 'import json; print(json.load(open("sources.lock.json"))["source"]["commit"])')" >> "$GITHUB_OUTPUT"
+      - name: Check out ImmortalWrt
+        uses: actions/checkout@v4
+        with:
+          repository: immortalwrt/immortalwrt
+          ref: ${{ steps.source.outputs.sha }}
+          path: openwrt
+      - name: Restore downloaded source cache
+        uses: actions/cache@v4
+        with:
+          path: openwrt/dl
+          key: swrt-downloads-${{ runner.os }}-${{ hashFiles('sources.lock.json', '.config') }}
+          restore-keys: swrt-downloads-${{ runner.os }}-
+      - name: Install feeds and resolve configuration
+        run: bash scripts/prepare.sh "$GITHUB_WORKSPACE/openwrt" 2>&1 | tee prepare.log
+      - name: Download all sources
+        working-directory: openwrt
+        run: make download -j8 V=s 2>&1 | tee ../download.log
+      - name: Compile firmware
+        working-directory: openwrt
+        run: |
+          set -o pipefail
+          if ! make -j"$(nproc)" V=s 2>&1 | tee ../build.log; then
+            echo "::warning::Parallel build failed; retrying serially with the existing build tree"
+            make -j1 V=s 2>&1 | tee ../build-retry.log
+          fi
+      - name: Verify and collect firmware
+        run: |
+          python3 scripts/collect-firmware.py openwrt firmware-release
+          cp README.md firmware-release/FLASHING-README.md
+          cp docs/COMPATIBILITY.md firmware-release/COMPATIBILITY.md
+          cd firmware-release
+          sha256sum -- * > ../sha256sums.new
+          mv ../sha256sums.new sha256sums
+      - name: Save firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: SWRT-Photonicat1-${{ github.run_number }}
+          path: firmware-release/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish verified firmware
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="SWRT-Photonicat1-$(date -u +%Y%m%d-%H%M%S)-$GITHUB_RUN_NUMBER"
+          gh release create "$tag" firmware-release/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "$tag" --notes-file docs/RELEASE-NOTES.md
+      - name: Save build logs and resolved configuration
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SWRT-build-diagnostics-${{ github.run_number }}
+          path: |
+            *.log
+            openwrt/swrt-metadata/
+            openwrt/.config
+            openwrt/logs/
+          include-hidden-files: true
+          retention-days: 7

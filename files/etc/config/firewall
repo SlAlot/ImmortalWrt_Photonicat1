@@ -25,7 +25,6 @@ config zone
 	list network 'wan'
 	list network 'wan6'
 	list network 'wwan'
-	list network 'wwan_5g'
 
 config forwarding
 	option src 'lan'

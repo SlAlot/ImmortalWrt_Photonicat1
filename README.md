@@ -1,170 +1,56 @@
-# ImmortalWrt 自动编译
+# SWRT · S-Photonicat1
 
-## 适用于 光影猫 1代 的 immortalWrt 的自用固件
-### 配置文件基于顶配版调试：RM520N-GL + QCNFA765 / WCN6855
+光影猫一代（RK3568）ImmortalWrt 自用固件，迁移自 [a757814283/ImmortalWrt_Photonicat1](https://github.com/a757814283/ImmortalWrt_Photonicat1)。不适用光影猫二代。
 
+| 项目 | 配置 |
+| --- | --- |
+| 主机名 | `S-Photonicat1` |
+| 管理地址 / LAN 网关 | `192.168.17.1` |
+| 终端 Banner | `SWRT` |
+| 系统 | ImmortalWrt `openwrt-25.12`，源码与 feeds 固定提交 |
+| 首页 | iStore QuickStart，保留状态概览入口 |
+| 蜂窝拨号 | QModem + `luci-app-qmodem-next` |
+| 网络面板 | SlAlot/wlmb-server 1.1.3，`http://192.168.17.1:1117` |
+| 应用商店 | iStore，使用当前系统的 APK 包管理 |
+| 容器 | Docker、Docker Compose、LuCI Docker 管理 |
 
-### 包含必要插件：
+移除 `luci-app-modemband`（原说明中的 modernband）、`luci-app-sms-tool-js`（原说明中的 smsjs）及旧配置。QModem Next 和网络面板保留各自的短信功能。
 
-1. luci-app-modernband LTE/5G锁频或切换插件（已调试并包含配置文件）
-2. luci-app-smsjs 短信收发（已调试并包含配置文件）
-3. luci-app-mwan3 多wan自动切换（已调试并包含配置文件）
+保留 PassWall、SmartDNS、MWAN3、ZeroTier、CPU 调频、电池管理、板载和扩展无线驱动。修正原来无效的 `luci-app-clash` 包名，实际集成 OpenClash。原 Wi-Fi 预设面向 QCNFA765/WCN6855 扩展网卡，未声称所有网卡均已实测。
 
-### 多wan自动切换:
-WAN > WIFI桥接(wwan) > 5G/LTE(wwan_5g)
+## 自动编译
 
-### 上网插件：
+修改 `.config`、`files/`、`package/`、构建脚本或依赖锁后推送到 `main` 自动编译。也可在 [Actions](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions) 中选择 **Build SWRT Photonicat1 → Run workflow**。
 
-1. luci-app-passwall
-2. luci-app-smartdns
-3. luci-app-clash
+成功后自动发布到 [Releases](https://github.com/SlAlot/ImmortalWrt_Photonicat1/releases)，含 ext4 / squashfs 镜像、校验文件、最终配置、源码/feeds 提交与镜像检查报告。配置丢失必需插件、编译或镜像验证失败时不发布。首次完整编译可能需要数小时。
 
-### 其他：
+所有依赖见 `sources.lock.json`。网络面板使用作者正式版 ARM64 musl 程序，验证固定 SHA-256 后作为系统原生包装入固件；首次开机无需下载安装。更新依赖须同步锁文件与 feeds，更新网络面板还需同步 `package/wlmb-server/Makefile` 的版本和摘要。
 
-1. luci-app-cpufreq CPU频率调节
-2. luci-app-zerotier 虚拟局域网
-3. luci-mod-battstatus 电池状态显示
+## USB 线刷：务必先解压
 
-<img width="2560" height="1250" alt="image" src="https://github.com/user-attachments/assets/10dee553-bab4-4d34-af9f-11db3455a62f" />
-<img width="2560" height="1250" alt="image" src="https://github.com/user-attachments/assets/734d07fa-3474-46e2-8f24-b1a56f3d1afe" />
-<img width="2560" height="1250" alt="image" src="https://github.com/user-attachments/assets/ea56631f-3496-4494-a4ca-fdde6615324c" />
+1. 下载文件名含 `ariaboard_photonicat-squashfs-sysupgrade.img.gz` 或 `ext4-sysupgrade.img.gz` 的镜像并核对 SHA-256。
+2. **用 7-Zip 等解压 `.img.gz` 得到 `.img`。RKDevTool 必须选择 `.img`，不要直接写 `.gz`。**
+3. 按 [官方教程](https://photonicat.com/wiki/Photonicat_刷机操作手册)的主线内核方式进入 MaskROM，在“下载镜像”页选一代对应的 `MiniLoaderAll.bin` 和完整 `.img`，整盘地址 `0x00000000`。擦除会清除数据，先备份需要的配置。
+4. 正常重启并等待初始化，通过 LAN 口访问 `http://192.168.17.1`。首次登录后设置自己的管理密码和 Wi-Fi 密码；不要恢复整套旧网络配置覆盖新配置。
 
-## 使用步骤
+构建会验证 gzip、设备元数据、分区边界、sector 64 的 RK3568 loader 和 8 MiB 的 U-Boot FIT。通过构建检查仍不等于真机启动验收。
 
-### 正常流程
+## QModem 与多 WAN
 
-1. (必须) fork 本仓库
-2. (必须) 上传 `.config` 文件与 `feeds.conf.default` 文件到此仓库
-3. (可选) 编辑仓库内的 `diy.sh` 文件，可以自定义编译前的命令，一般使用 git clone 来克隆需要使用到的第三方插件
-4. - 进入本仓库的 Actions 页面
-   - 在左侧选择 `🚀 编译 (Build)`
-   - 右侧点击 Run workflow
-   - 填入需要编译的仓库的信息
-   - 最后点击绿色的 Run workflow![run-workflow](img/run-workflow.png)
-5. 等待编译完成，大约需要 2-3 小时
-6. ![Build success](img/build-success.png)当页面像这样显示绿色的✅的时候，就说明编译完成了，点击进去到这个界面![build-result](img/build-result.png)找到 ImmortalWrt-build-result ，就是编译后的固件了。直接点击下载就可以
+进入 QModem 页面扫描模组，核对型号、AT 端口和数据接口，再填写真实 APN 并选择 QMI/MBIM/ECM 等协议启用拨号。固件不猜测 SIM/APN。
 
-### 通过 SSH 连接到 Github Actions 进行编译
+包含通用 USB QMI、MBIM、NCM、ECM、RNDIS、串口、ACM/WDM 和 PCIe MHI 驱动，以及 USB 2/3、USB 存储/UAS、ext4。避免同时混装互相竞争的厂商驱动。
 
-和正常流程几乎没有区别，只是可以省下自己开 codespaces 编译的时间，比较方便一点 (注意：此过程中自己上传的 `.config` 和 `feeds.conf.default` 不会自动复制到对应目录，`diy.sh` 也不会自动执行。但是你可以在连接到编译环境以后自己手动复制和修改)
+已移除固定 `usb0` 的旧 DHCP 蜂窝接口。QModem 的 IPv4 拨号接口首次上线时加入原 MWAN3 策略：有线 WAN > Wi-Fi 中继 > 蜂窝。IPv6/管理桥不加入；后续手动修改的成员优先级不会被覆盖。删除模组实例后可在 MWAN3 删除其旧成员。
 
-1. (必须) fork 本仓库
+网络面板保持 `auto` 模式，复用 QModem 的已识别共享通道，不开启第二套拨号服务。仍需真机验证拨号、短信、共享 AT 与故障切换。
 
-2. (必须) 上传 `.config` 文件与 `feeds.conf.default` 文件到此仓库
+## iStore 首页与 Docker
 
-3. (可选) 编辑仓库内的 `diy.sh` 文件，可以自定义编译前的命令，一般使用 git clone 来克隆需要使用到的第三方插件
+包含 QuickStart 后端、Lua 兼容、iStore 任务服务、磁盘工具和 Docker；保留上游禁止二次压缩的设置，增加明确首页菜单，禁用面向 iStoreOS 的固件更新检查。**本项目是 SWRT / ImmortalWrt，不要刷入 iStoreOS OTA 镜像。**
 
-4. - 进入本仓库的 Actions 页面
-   - 在左侧选择 `🚀 编译 (Build)`
-   - 右侧点击 Run workflow
-   - 填入需要编译的仓库的信息
-   - 把 **使用 ssh 连接到编译环境** 勾选上
-   - 最后点击绿色的 Run workflow![ssh-run](img/ssh-run.png)
+系统使用 APK，不可混装 IPK 或其他内核 ABI 的驱动。商店可用不代表所有应用兼容。保留原 1 GiB 根分区，Docker 数据建议迁移到独立 ext4 存储，避免系统盘被容器镜像占满。未开放网络 Docker API。
 
-5. 原地等待 10 秒，进入正在运行的 workflow![goto-workflow](img/goto-workflow.png)
+已知兼容问题、上游 Issue 和验收步骤见 [COMPATIBILITY.md](docs/COMPATIBILITY.md)。QuickStart 的主题样式、温度等字段仍需真机确认，不能仅凭编译宣称全部修复。
 
-6. 点击左侧 `🚀 编译 (Build) - SSH` ![goto-ssh-log](img/goto-ssh-log.png)
-
-7. 找到 `开启 SSH 服务` 并展开，然后复制里面的 ssh session ，用自己的终端执行就可以连上了 (这里的 ssh session 都是一样的，随便找一个复制就行)![get-ssh-session](img/get-ssh-session.png)
-
-8. 连接成功以后，执行以下命令
-
-   ```shell
-   cd ImmortalWrt && ./scripts/feeds update -a && ./scripts/feeds install -a && make menuconfig
-   ```
-
-9. 根据自己的需要来定制 config![make-config](img/make-config.png)
-
-10. 保存以后会回到终端，**输入 `exit`  来退出 ssh**，退出以后会自动开始编译
-
-11. 等待编译完成，大约需要 2-3 小时
-
-12. ![Build success](img/build-success.png)当页面像这样显示绿色的✅的时候，就说明编译完成了，点击进去到这个界面![build-result](img/build-result.png)找到 ImmortalWrt-build-result ，就是编译后的固件了。直接点击下载就可以
-
-## 如何定制 config 和 feeds：
-
-1. 克隆对应分支的 openwrt 仓库(可以使用自己的 ubuntu 系统，教程里是利用免费的 github codespaces 进行定制)
-
-2. 下载第三方插件，如
-   ```shell
-   git clone --depth=1 https://github.com/EOYOHOO/UA2F.git package/UA2F
-   git clone --depth=1 https://github.com/EOYOHOO/rkp-ipid.git package/rkp-ipid
-   ```
-
-3. 更新 feeds
-   ```shell
-   ./scripts/feeds update -a && ./scripts/feeds install -a
-   ```
-
-4. 定制config，先输入
-   ```shell
-   make menuconfig
-   ```
-   会弹出插件配置界面，选择对应的 `Target System` ， `Subtarget` ， `Target Profile` ， 注意， `Target Profile` 必须精确到对应的设备名，否则理论上不兼容
-
-5. 继续选择需要安装的插件，上下箭头移动，左右箭头切换底部选项卡，回车为选择进入，对着插件按空格会将插件前的标识变为 `M` ，再按一下空格会变成 `*` ，变成 `*` 才代表此插件被选中安装
-
-6. 选择好需要的插件以后，用左右箭头切换到 `save` 选项卡按回车保存
-
-7. 输入命令
-   ```shell
-   zip conf.zip feeds.conf.default .config
-   ```
-   会将 `feeds.conf.default` 与 `.config` 两个文件压缩为 `conf.zip` ，将 `conf.zip` 下载到本地，然后解压可以得到自己定制好的 config 和 feed 啦
-
-## 编译之如何单独编译某一个模块
-
-1. 想单独编译某一个模块，前提是你当前的环境已经编译过一次**完整的 openwrt 固件**才行，因为编译完整的 openwrt 固件时，它会自动编译工具链，没有工具链就没法单独编译模块，这一点你必须清楚地了解。如果你的当前环境已经编译过**完整的 openwrt 固件**了，但是还是显示缺少依赖，那么很抱歉，只能从头编译了
-
-2. 确保你已经编译过一次完整的 openwrt 之后，先克隆对应仓库的地址到 package 文件夹下，格式如下：
-   ```shell
-   git clone --depth=1 仓库地址 package/项目名称
-   ```
-
-   例子：
-   ```shell
-   git clone --depth=1 https://github.com/iv7777/luci-app-pptp-server package/luci-app-pptp-server
-   ```
-
-3. 先清空下之前编译的残留物 `make clean`
-
-4. 更新feeds
-   ```shell
-   ./scripts/feeds update -a && ./scripts/feeds install -a
-   ```
-
-5. 执行 `make menuconfig` ，选择对应的 Target System，Subtarget，Target Profile
-
-6. 找到对应的模块的位置，将其选定，标记为M，M代表以模块方式编译，这样我们就不需要编译整个 openwrt 也可以编译出 ipk 文件啦。如图所示，选中以后记得选择 Save 来保存哦![mod](img/mod.jpg)
-
-7. 开始编译吧，格式如下：
-    ```shell
-    make package/项目名称/compile V=s
-    ```
-
-   例子：
-   ```shell
-   make package/luci-app-pptp-server/compile V=s
-   ```
-
-[//]: # (Kernel Modules->Other modules->kmod-rkp-ipid)
-
-[//]: # (Kernel Modules->Netfilter Extensions->kmod-ipt-u32)
-
-[//]: # (Network->Routing and Redirection->ua2f)
-
-[//]: # (Network->SSH->openssh-sftp-server)
-
-[//]: # (Network->Firewall->iptables-mod-filter)
-
-[//]: # (Network->Firewall->iptables-mod-u32)
-
-[//]: # (Luci->Theme->luci-theme-argon-new)
-
-[//]: # (Luci->Applications->luci-app-openclash)
-
-[//]: # (Luci->Applications->luci-app-ttyd)
-
-[//]: # (Luci->Applications->luci-app-upnp)
-
-[//]: # (记得最后搜索 Netfilter Extensions 加上 CONFIG_NETFILTER_NETLINK_GLUE_CT=y)
+第三方许可与署名保留。QModem、网络面板的非商业限制继续适用。

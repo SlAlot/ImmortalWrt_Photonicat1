@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Verify image checksums, boot headers and installed packages before publishing."""
+import hashlib
+import json
+import pathlib
+import shutil
+import struct
+import sys
+import zlib
+
+build = pathlib.Path(sys.argv[1])
+out = pathlib.Path(sys.argv[2])
+out.mkdir(parents=True, exist_ok=True)
+target = build / "bin/targets/rockchip/armv8"
+profiles = json.loads((target / "profiles.json").read_text())
+profile = profiles["profiles"]["ariaboard_photonicat"]
+assert "ariaboard,photonicat" in profile["supported_devices"]
+manifests = list(target.glob("*ariaboard_photonicat.manifest"))
+assert len(manifests) == 1, "Expected exactly one Photonicat manifest"
+packages = {line.split(" - ", 1)[0] for line in manifests[0].read_text().splitlines()}
+required = {"qmodem", "luci-app-qmodem-next", "wlmb-server", "quickstart",
+            "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
+            "pcat-mgr", "luci-app-passwall", "luci-app-openclash"}
+assert required <= packages, f"Missing installed packages: {required - packages}"
+assert not {"luci-app-modemband", "modemband", "luci-app-sms-tool-js"} & packages
+
+verified = []
+for info in profile["images"]:
+    if info["type"] != "sysupgrade":
+        continue
+    src = target / info["name"]
+    assert src.name == info["name"], "Invalid profile image name"
+    digest = hashlib.sha256(src.read_bytes()).hexdigest()
+    assert digest == info["sha256"], f"Checksum mismatch: {src.name}"
+    decoder = zlib.decompressobj(31)
+    prefix = bytearray()
+    expanded = 0
+    # fwtool appends metadata after the gzip member; zlib intentionally allows
+    # that trailer, whereas gzip.open() can reject it as an extra gzip member.
+    with src.open("rb") as compressed:
+        while chunk := compressed.read(1024 * 1024):
+            data = decoder.decompress(chunk)
+            expanded += len(data)
+            if len(prefix) < 9 * 1024 * 1024:
+                prefix.extend(data[:9 * 1024 * 1024 - len(prefix)])
+    assert decoder.eof, "Incomplete gzip image"
+    assert prefix[510:512] == b"\x55\xaa", "Missing MBR"
+    assert prefix[0x8000:0x8004] == b"RKNS", "Missing RK3568 loader at sector 64"
+    assert prefix[0x800000:0x800004] == b"\xd0\x0d\xfe\xed", "Missing U-Boot FIT"
+    assert b"ariaboard,photonicat" in prefix, "Wrong bootloader device tree"
+    assert b"ariaboard,photonicat" in decoder.unused_data, "Missing device metadata"
+    for offset in (446, 462):
+        start, size = struct.unpack_from("<II", prefix, offset + 8)
+        assert start and size and (start + size) * 512 <= expanded
+    shutil.copy2(src, out / src.name)
+    verified.append({"file": src.name, "sha256": digest, "expanded_bytes": expanded})
+
+assert {entry["filesystem"] for entry in profile["images"] if entry["type"] == "sysupgrade"} == {"ext4", "squashfs"}
+for src in [target / "profiles.json", manifests[0], *target.glob("*.buildinfo")]:
+    shutil.copy2(src, out / src.name)
+for src in (build / "swrt-metadata").iterdir():
+    shutil.copy2(src, out / src.name)
+(out / "image-validation.json").write_text(json.dumps(verified, indent=2) + "\n")
+with (out / "sha256sums").open("w") as checksums:
+    for src in sorted(out.iterdir()):
+        if src.name != "sha256sums" and src.is_file():
+            checksums.write(f"{hashlib.sha256(src.read_bytes()).hexdigest()}  {src.name}\n")
+print(json.dumps(verified, indent=2))
