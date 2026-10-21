@@ -3,6 +3,7 @@
 ## QuickStart and iStore
 
 - Include the QuickStart backend, Lua compatibility, iStore task services and storage utilities. The page package alone is insufficient.
+- GNU tar's enabled XZ support requires both the `xz-utils` parent option and `xz`. Leaving the parent disabled makes Kconfig drop tar, iStore and the QuickStart UI; configuration validation checks this dependency explicitly.
 - Upstream forbids JS/CSS re-minification; the build checks its settings. See [#76](https://github.com/linkease/nas-packages-luci/issues/76).
 - An explicit homepage menu is registered; standard status remains available. QuickStart runs under procd with respawn. If the page fails, inspect `logread -e quickstart`, its process and browser errors. See [#87](https://github.com/linkease/nas-packages-luci/issues/87).
 - Language resources are included upstream. Refresh browser assets after upgrading before treating stale English text as a missing translation. See [#80](https://github.com/linkease/nas-packages-luci/issues/80).

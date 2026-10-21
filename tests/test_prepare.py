@@ -87,7 +87,6 @@ exit 0
         bin_dir.mkdir()
         make = bin_dir / "make"
         make.write_text("""#!/bin/sh
-[ "$1" = '-s' ] && exit 0
 cmp .config "$SWRT_TEST_SEED" || exit 9
 case "$SWRT_TEST_MODE" in
     cycle) echo 'tmp/.config-package.in:1:error: recursive dependency detected!'; exit 0 ;;
