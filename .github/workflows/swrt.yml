@@ -82,6 +82,7 @@ jobs:
           cp README.md firmware-release/FLASHING-README.md
           cp docs/COMPATIBILITY.md firmware-release/COMPATIBILITY.md
           cd firmware-release
+          rm -f sha256sums
           sha256sum -- * > ../sha256sums.new
           mv ../sha256sums.new sha256sums
       - name: Save firmware
