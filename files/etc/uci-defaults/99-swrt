@@ -16,10 +16,14 @@ uci set network_panel.main=core
 uci set network_panel.main.backend_mode='auto'
 uci set network_panel.main.boot_enabled='1'
 
+# QModem's at_tool=0 selects Tom; discovered instances retain shared ubus AT.
+uci set qmodem.main.at_tool='0'
+
 uci commit system
 uci commit luci
 uci commit quickstart
 uci commit network_panel
+uci commit qmodem
 
 for service in quickstart wlmb-server dockerd; do
     [ ! -x "/etc/init.d/$service" ] || "/etc/init.d/$service" enable

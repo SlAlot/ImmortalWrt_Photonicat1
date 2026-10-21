@@ -28,7 +28,9 @@ class ImagePublicationTests(unittest.TestCase):
         struct.pack_into("<II", self.payload, 470, 131072, 2048)
         self.manifest = self.target / "swrt-ariaboard_photonicat.manifest"
         self.manifest.write_text("\n".join(name + " - 1.0" for name in (
-            "qmodem", "luci-app-qmodem-next", "wlmb-server", "quickstart",
+            "qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
+            "qmodem-smsd", "sms-forwarder-next",
+            "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "pcat-mgr", "luci-app-passwall", "luci-app-openclash")))
 
@@ -68,6 +70,13 @@ class ImagePublicationTests(unittest.TestCase):
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Missing installed packages", result.stderr)
+
+    def test_legacy_qmodem_ui_blocks_release_with_next(self):
+        self.write_images()
+        self.manifest.write_text(self.manifest.read_text() + "\nluci-app-qmodem-sms - 1.0\n")
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Conflicting installed packages", result.stderr)
 
 @unittest.skipIf(os.name == "nt", "OpenWrt shell integration runs on Linux CI")
 class QModemFailoverTests(unittest.TestCase):

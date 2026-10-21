@@ -18,11 +18,16 @@ assert "ariaboard,photonicat" in profile["supported_devices"]
 manifests = list(target.glob("*ariaboard_photonicat.manifest"))
 assert len(manifests) == 1, "Expected exactly one Photonicat manifest"
 packages = {line.split(" - ", 1)[0] for line in manifests[0].read_text().splitlines()}
-required = {"qmodem", "luci-app-qmodem-next", "wlmb-server", "quickstart",
+required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
+            "qmodem-smsd", "sms-forwarder-next",
+            "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "pcat-mgr", "luci-app-passwall", "luci-app-openclash"}
 assert required <= packages, f"Missing installed packages: {required - packages}"
-assert not {"luci-app-modemband", "modemband", "luci-app-sms-tool-js"} & packages
+forbidden = {"luci-app-modemband", "modemband", "luci-app-sms-tool-js",
+             "luci-app-qmodem", "luci-app-qmodem-sms", "luci-app-qmodem-mwan",
+             "luci-app-qmodem-ttl", "luci-app-qmodem-hc"}
+assert not forbidden & packages, f"Conflicting installed packages: {forbidden & packages}"
 
 verified = []
 for info in profile["images"]:

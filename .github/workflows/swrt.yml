@@ -8,6 +8,9 @@ on:
     branches: [main]
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: swrt-${{ github.ref }}
   cancel-in-progress: false
@@ -64,18 +67,26 @@ jobs:
           key: swrt-downloads-${{ runner.os }}-${{ hashFiles('sources.lock.json', '.config') }}
           restore-keys: swrt-downloads-${{ runner.os }}-
       - name: Install feeds and resolve configuration
-        run: bash scripts/prepare.sh "$GITHUB_WORKSPACE/openwrt" 2>&1 | tee prepare.log
+        run: |
+          set -euo pipefail
+          bash scripts/prepare.sh "$GITHUB_WORKSPACE/openwrt" 2>&1 | tee prepare.log
+          test -s openwrt/swrt-metadata/config.resolved
       - name: Download all sources
         working-directory: openwrt
-        run: make download -j8 V=s 2>&1 | tee ../download.log
+        run: |
+          set -euo pipefail
+          make download -j8 V=s 2>&1 | tee ../download.log
+          python3 ../scripts/check-config.py .config
       - name: Compile firmware
         working-directory: openwrt
         run: |
-          set -o pipefail
+          set -euo pipefail
+          python3 ../scripts/check-config.py .config
           if ! make -j"$(nproc)" V=s 2>&1 | tee ../build.log; then
             echo "::warning::Parallel build failed; retrying serially with the existing build tree"
             make -j1 V=s 2>&1 | tee ../build-retry.log
           fi
+          python3 ../scripts/check-config.py .config
       - name: Verify and collect firmware
         run: |
           python3 scripts/collect-firmware.py openwrt firmware-release

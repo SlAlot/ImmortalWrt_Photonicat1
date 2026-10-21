@@ -9,7 +9,14 @@ values = dict(line.split("=", 1) for line in config.splitlines()
 required = [
     "TARGET_rockchip_armv8_DEVICE_ariaboard_photonicat",
     "PACKAGE_luci-app-qmodem-next", "PACKAGE_qmodem", "PACKAGE_modem_scan",
-    "PACKAGE_ubus-at-daemon", "PACKAGE_wlmb-server",
+    "PACKAGE_ubus-at-daemon", "PACKAGE_tom_modem",
+    "PACKAGE_tom_modem_ENABLE_UBUS_DAEMON",
+    "PACKAGE_qmodem_USE_TOM_CUSTOMIZED_QUECTEL_CM", "PACKAGE_quectel-CM-5G-M",
+    "PACKAGE_qmodem_INCLUDE_generic-qmi-wwan",
+    "PACKAGE_qmodem_GENERIC_MHI_PCIe_DRIVER",
+    "PACKAGE_kmod-mhi-net", "PACKAGE_kmod-mhi-pci-generic",
+    "PACKAGE_kmod-mhi-wwan-ctrl", "PACKAGE_kmod-mhi-wwan-mbim",
+    "PACKAGE_qmodem-smsd", "PACKAGE_sms-forwarder-next", "PACKAGE_wlmb-server",
     "PACKAGE_luci-app-quickstart", "PACKAGE_quickstart", "PACKAGE_luci-app-store",
     "PACKAGE_luci-compat", "PACKAGE_luci-lua-runtime", "PACKAGE_luci-lib-ipkg",
     "PACKAGE_docker", "PACKAGE_dockerd", "PACKAGE_luci-app-dockerman",
@@ -29,8 +36,12 @@ forbidden = [
     "PACKAGE_luci-app-modemband", "PACKAGE_modemband",
     "PACKAGE_luci-app-sms-tool-js", "PACKAGE_luci-app-qmodem",
     "PACKAGE_luci-app-qmodem-mwan",
+    "PACKAGE_luci-app-qmodem-sms", "PACKAGE_luci-app-qmodem-ttl",
+    "PACKAGE_luci-app-qmodem-hc",
     "PACKAGE_qmodem_INCLUDE_vendor-qmi-wwan",
     "PACKAGE_qmodem_VENDOR_MHI_PCIe_DRIVER",
+    "PACKAGE_qmodem_NSS_MHI_PCIe_DRIVER", "PACKAGE_qmodem_INCLUDE_nss-qmi-wwan",
+    "PACKAGE_qmodem_USING_QWRT_QUECTEL_CM_5G", "PACKAGE_qmodem_USING_NORMAL_QUECTEL_CM",
 ]
 errors = [f"Missing {key}" for key in required if values.get("CONFIG_" + key) != "y"]
 errors += [f"Unexpected {key}" for key in forbidden

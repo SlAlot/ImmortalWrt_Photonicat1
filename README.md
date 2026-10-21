@@ -25,7 +25,7 @@
 
 | 类别 | 组件与用途 |
 | --- | --- |
-| 蜂窝网络 | QModem 与 QModem Next 界面，提供模组发现、拨号及管理 |
+| 蜂窝网络 | QModem Next 界面、Tom AT 核心与 Tom 定制拨号组件，提供模组发现、拨号及管理 |
 | 网络面板 | wlmb-server，提供独立 WebUI，并支持与 QModem 共享通道 |
 | 管理首页 | iStore QuickStart 首页，保留 LuCI 状态概览入口 |
 | 应用商店 | iStore |
@@ -87,6 +87,8 @@
 2. 根据运营商要求填写 APN，选择模组实际支持的拨号协议，再启用拨号。
 3. 验证接口地址、默认路由、DNS 与实际联网情况。
 4. 打开网络面板，查看信号、模组及网络状态。
+
+QModem 默认使用 Tom AT 工具，并启用 ubus 共享支持；拨号组件使用 Tom 定制的 Quectel CM。界面仅启用 `luci-app-qmodem-next`，排除依赖旧界面的 SMS、MWAN、TTL 和 HC 插件。Next 所需的短信后端及转发组件正常保留。
 
 QModem 负责蜂窝拨号，网络面板默认使用 `auto` 模式识别共享通道。QModem 已占用 AT 端口时，不要将面板强制切换为独立串口模式。
 

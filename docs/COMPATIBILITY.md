@@ -14,6 +14,8 @@
 ## QModem and Network Panel
 
 - QModem Next is the single QModem main UI. Legacy QModem/MWAN UI packages are excluded.
+- Tom AT is the default (`qmodem.main.at_tool=0`) with ubus support enabled; the Tom-customized Quectel CM is selected. Legacy SMS/MWAN/TTL/HC UI packages that depend on `luci-app-qmodem` are excluded. Next's `qmodem-smsd` and `sms-forwarder-next` backends remain required.
+- The pinned QModem recipe's missing `kmod-mhi-wwan` dependency is mapped to this kernel's actual `kmod-mhi-net` package. The unrelated WeeChat virtual-provider cycle is fixed by selecting `weechat-minimal` explicitly in its LuCI recipe. These guarded changes are applied before feed indexes are regenerated.
 - QModem controls dialing. Network Panel keeps auto mode and its shared-channel ownership checks. Do not force standalone mode while QModem owns its AT port.
 - Use generic kernel USB/MHI drivers; do not mix competing vendor driver stacks. USB composition and modem firmware still determine usable protocols.
 - MWAN3 enrollment only accepts the matching QModem IPv4 interface; IPv6 and management bridges are excluded. Repeated events preserve user changes. Remove stale MWAN3 members manually when deleting modem instances.
