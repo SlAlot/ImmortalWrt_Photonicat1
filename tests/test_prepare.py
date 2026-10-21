@@ -56,6 +56,9 @@ class PreparePipelineTests(unittest.TestCase):
         self.build = self.repo / "openwrt"
         (self.build / "include").mkdir(parents=True)
         (self.build / "include/toplevel.mk").touch()
+        (self.build / "tmp").mkdir()
+        for name in (".packageinfo", ".config-package.in"):
+            (self.build / "tmp" / name).touch()
         fixtures = {
             "feeds/luci/applications/luci-app-weechat/Makefile": "LUCI_DEPENDS:=+weechat \n",
             "feeds/qmodem/application/qmodem/Makefile": "PCIe_DRIVER:kmod-mhi-wwan \n",
@@ -84,6 +87,7 @@ exit 0
         bin_dir.mkdir()
         make = bin_dir / "make"
         make.write_text("""#!/bin/sh
+[ "$1" = '-s' ] && exit 0
 cmp .config "$SWRT_TEST_SEED" || exit 9
 case "$SWRT_TEST_MODE" in
     cycle) echo 'tmp/.config-package.in:1:error: recursive dependency detected!'; exit 0 ;;

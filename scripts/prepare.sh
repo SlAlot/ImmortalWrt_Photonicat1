@@ -37,6 +37,10 @@ grep -q 'MWAN3_RULE_ARGS=' feeds/luci/applications/luci-app-passwall/root/usr/sh
 cp "$repo_dir/.config" .config
 mkdir -p swrt-metadata
 make defconfig 2>&1 | tee swrt-metadata/defconfig.log
+cp tmp/.packageinfo tmp/.config-package.in swrt-metadata/
+for recipe in istore/luci-app-store nas_luci/luci-app-quickstart; do
+    make -s -C "package/feeds/$recipe" DUMP=1 > "swrt-metadata/${recipe##*/}.dump"
+done
 if grep -Eq 'recursive dependency detected|(^|:)error:' swrt-metadata/defconfig.log; then
     echo 'Kconfig reported an error; refusing to compile a fallback configuration' >&2
     exit 1
