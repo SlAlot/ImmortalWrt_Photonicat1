@@ -23,6 +23,7 @@
 - Use generic kernel USB/MHI drivers; do not mix competing vendor driver stacks. USB composition and modem firmware still determine usable protocols.
 - MWAN3 enrollment only accepts the matching QModem IPv4 interface; IPv6 and management bridges are excluded. Repeated events preserve user changes. Remove stale MWAN3 members manually when deleting modem instances.
 - Software and hardware flow-offloading options both default on. Hardware use depends on driver and path capabilities; the toggle alone does not prove hardware forwarding. MWAN3 retains the pinned iptables-nft compatibility path; failover and proxy combinations still require device tests. The separate QModem uplink manager is excluded.
+- See the [RK3568 offloading source study](OFFLOADING-RK3568.md) for the current stmmac capability limits, firewall4 fallback behavior and read-only device checks.
 - USB scanning is explicitly enabled on first boot, and scan flags are persisted. Delayed scans run as procd-owned one-shot processes with bounded readiness checks; disabled scans and auto-probe blocking are respected. FM350's `Generic` carrier placeholder falls back to COPS.
 
 ## MediaTek Wi-Fi
