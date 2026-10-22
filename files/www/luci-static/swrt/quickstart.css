@@ -1,28 +1,25 @@
-/* Display the central mark from the original, unmodified square logo assets. */
+/* Match the native cards: 24px white mark inside a 40px colored badge.
+ * Screen blending removes the original canvas without changing either PNG. */
 #app .swrt-panel-logo {
     display: block;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 24px;
+    height: 24px;
+    border-radius: 0;
     background: url('network-panel-light.png') 50% 55% / 210% no-repeat;
+    filter: invert(1);
+    mix-blend-mode: screen;
 }
 html[data-swrt-theme="dark"] #app .swrt-panel-logo {
     background-image: url('network-panel-dark.png');
+    filter: none;
 }
 @media (prefers-color-scheme: dark) {
     html[data-swrt-theme="auto"] #app .swrt-panel-logo {
         background-image: url('network-panel-dark.png');
+        filter: none;
     }
 }
-#app .feature-card.swrtpanel .icon-wrapper { background: transparent; }
-/* Fill the wide desktop row; wrap cards instead of hiding the fifth entry. */
-#app .page-container .card-container { flex-wrap: wrap; overflow: visible; }
-#app .page-container .card-container > .feature-card {
-    box-sizing: border-box;
-    flex: 1 1 220px;
-    min-width: 200px;
-    max-width: none;
-}
-@media (max-width: 540px) {
-    #app .page-container .card-container > .feature-card { flex-basis: 100%; min-width: 0; }
+#app .feature-card.swrtpanel .icon-wrapper {
+    background-color: #3b82f6;
+    isolation: isolate;
 }

@@ -148,7 +148,7 @@ RK3568 的源码判断、相关 GitHub 项目、软件与硬件卸载区别及�
 
 首页加入网络面板快捷磁贴，点击进入 LuCI → 服务 → 网络面板，Logo 跟随 Argon 明暗模式。终端入口在 **系统 → 终端**，登录保留 BusyBox 和 SWRT 字符画，下方标注作者 `SlAlot` 和 `ImmortalWrt`；不再显示 APK 对照表和空密码提示文字。
 
-QuickStart 0.13.0 会额外请求 `packages.adb.asc`，ImmortalWrt 源没有此文件。本项目改为检测当前 APK 配置中的 base 索引 `packages.adb`（最多缓存 60 秒）；真实的网络、DNS、源连接失败仍显示错误。“软件源配置”进入系统软件包管理页，避免旧向导将 ImmortalWrt 源替换成 OpenWrt 源。索引可达不代表所有自定义包均有在线更新；内核模块仍须匹配本固件构建版本。
+QuickStart 0.13.0 会额外请求 `packages.adb.asc`，ImmortalWrt 源没有此文件。本项目改为检测当前 APK 配置中的所有索引 `packages.adb`（最多缓存 60 秒）；真实的网络、DNS、源连接失败仍显示错误。“软件源配置”进入系统软件包管理页，避免旧向导将 ImmortalWrt 源替换成 OpenWrt 源。默认软件源使用南京大学 ImmortalWrt 镜像，iStore 兼容源独立保留；未提供公开二进制索引的构建 feeds 不写入在线源列表。索引可达不代表所有自定义包均有在线更新；内核模块仍须匹配本固件构建版本。
 
 Docker 默认已集成。根分区为 1 GiB，部署容器前建议将 Docker 数据目录设置到独立 ext4 存储，避免镜像与容器数据占满系统盘。
 

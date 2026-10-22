@@ -1,15 +1,15 @@
 #!/bin/sh
 # QuickStart 0.13.0 probes packages.adb.asc, which ImmortalWrt does not publish.
-# Check the configured base index itself. This is reachability, not signature validation.
-feeds=/etc/apk/repositories.d/distfeeds.list
-[ -s "$feeds" ] || { echo unavailable; exit 0; }
-url=$(awk '/^https?:\/\/[^[:space:]]+\/base\/packages\.adb$/ { print; exit }' "$feeds")
-[ -n "$url" ] || { echo unavailable; exit 0; }
+# Check all active index URLs, including iStore. APK still validates signatures.
+set -- /etc/apk/repositories.d/*.list
+config=$(cat "$@" 2>/dev/null)
+urls=$(printf '%s\n' "$config" | awk '/^https?:\/\/[^[:space:]]+\/packages\.adb$/ { if (!seen[$0]++) print }')
+[ -n "$urls" ] || { echo unavailable; exit 0; }
 
 cache_dir=/var/run/swrt-apk-status
 umask 077
 mkdir -p "$cache_dir" || { echo failed; exit 0; }
-key=$(cksum < "$feeds" | tr ' ' ':')
+key=$(printf '%s\n' "$config" | sha256sum | cut -d ' ' -f 1)
 now=$(date +%s)
 if [ -r "$cache_dir/result" ]; then
     read -r saved_key saved_time saved_status < "$cache_dir/result"
@@ -20,11 +20,28 @@ if [ -r "$cache_dir/result" ]; then
     fi
 fi
 
-status=failed
-if curl --head --fail --silent --location --connect-timeout 3 --max-time 8 \
-    --proto '=http,https' --proto-redir '=http,https' --output /dev/null "$url"; then
-    status=ok
+workdir="$cache_dir/probe.$$"
+mkdir "$workdir" || { echo failed; exit 0; }
+trap 'rm -f "$workdir"/failed-*; rmdir "$workdir"' EXIT
+number=0
+for url in $urls; do
+    number=$((number + 1))
+    (
+        curl --head --fail --silent --location --connect-timeout 3 --max-time 8 \
+            --proto '=http,https' --proto-redir '=http,https' --output /dev/null "$url" ||
+            printf '%s\n' "$url" > "$workdir/failed-$number"
+    ) &
+done
+wait
+set -- "$workdir"/failed-*
+status=ok
+if [ -f "$1" ]; then
+    status=failed
+    cat "$@" > "$cache_dir/errors.$$"
+else
+    : > "$cache_dir/errors.$$"
 fi
+mv -f "$cache_dir/errors.$$" "$cache_dir/errors"
 printf '%s %s %s\n' "$key" "$now" "$status" > "$cache_dir/result.$$"
 mv -f "$cache_dir/result.$$" "$cache_dir/result"
 echo "$status"

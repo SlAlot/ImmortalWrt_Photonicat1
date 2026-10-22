@@ -40,6 +40,7 @@ required = [
     "TARGET_ROOTFS_EXT4FS", "TARGET_ROOTFS_SQUASHFS",
 ]
 forbidden = [
+    "FEED_video", "FEED_istore", "FEED_nas", "FEED_nas_luci", "FEED_qmodem",
     "PACKAGE_luci-app-modemband", "PACKAGE_modemband",
     "PACKAGE_luci-app-sms-tool-js", "PACKAGE_luci-app-qmodem",
     "PACKAGE_luci-app-qmodem-mwan",

@@ -26,7 +26,7 @@ window.open(`${(B=(z=window.quickstart_configs)==null?void 0:z.ttyd)!=null&&B.ss
 ''', encoding="utf-8")
     template = base / "luasrc/view/quickstart/main.htm"
     template.parent.mkdir(parents=True, exist_ok=True)
-    template.write_text('      window.token =\n<%+footer%>', encoding="utf-8")
+    template.write_text('      window.token =\n<script src="/luci-static/quickstart/index.js<%# ?v=PKG_VERSION %>"></script>\n<%+footer%>', encoding="utf-8")
     controller = base / "luasrc/controller/quickstart.lua"
     controller.parent.mkdir(parents=True, exist_ok=True)
     controller.write_text('''function index()
@@ -50,6 +50,9 @@ class QuickStartPatchTests(unittest.TestCase):
             patcher.patch_quickstart(root)
             self.assertEqual(js.read_text(encoding="utf-8"), patched)
             self.assertEqual(patched.count('icon:"swrtPanel"'), 1)
+            self.assertIn("quickstart.js?v=" + patcher.UI_REVISION, patched)
+            template = js.parents[3] / "luasrc/view/quickstart/main.htm"
+            self.assertIn("index.js?v=" + patcher.UI_REVISION, template.read_text(encoding="utf-8"))
             js.write_text(patched.replace('.then(swrtNetworkStatus)', '.changed()'), encoding="utf-8")
             with self.assertRaises(SystemExit):
                 patcher.patch_quickstart(root)
@@ -95,10 +98,11 @@ class ApkProbeTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.feeds = self.root / "feeds.list"
+        (self.root / "repos").mkdir()
+        self.feeds = self.root / "repos/feeds.list"
         self.feeds.write_text("https://example.test/base/packages.adb\n")
         script = (ROOT / "files/usr/libexec/swrt-apk-status").read_text()
-        script = script.replace("/etc/apk/repositories.d/distfeeds.list", str(self.feeds))
+        script = script.replace("/etc/apk/repositories.d", str(self.feeds.parent))
         script = script.replace("/var/run/swrt-apk-status", str(self.root / "cache"))
         self.script = self.root / "probe"
         self.script.write_text(script)
@@ -106,7 +110,7 @@ class ApkProbeTests(unittest.TestCase):
         bin_dir.mkdir()
         # Record exact argv: probe the index, never the nonexistent .asc file.
         curl = bin_dir / "curl"
-        curl.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >> "$PROBE_ARGS"\nexit "$PROBE_EXIT"\n')
+        curl.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >> "$PROBE_ARGS"\ncase "$*" in *broken.test*) exit 22 ;; esac\nexit "$PROBE_EXIT"\n')
         curl.chmod(0o755)
         self.env = {**os.environ, "PATH": str(bin_dir) + ":" + os.environ["PATH"],
                     "PROBE_ARGS": str(self.root / "args"), "PROBE_EXIT": "0"}
@@ -125,6 +129,11 @@ class ApkProbeTests(unittest.TestCase):
         self.assertNotIn(".asc", args)
         self.feeds.write_text("https://broken.test/base/packages.adb\n")
         self.assertEqual(self.run_probe("22"), "failed")
+
+    def test_one_failed_custom_feed_keeps_error_with_healthy_base(self):
+        self.feeds.write_text("https://example.test/base/packages.adb\nhttps://broken.test/qmodem/packages.adb\n")
+        self.assertEqual(self.run_probe(), "failed")
+        self.assertIn("broken.test", (self.root / "cache/errors").read_text())
 
     def test_http_timeout_and_missing_configuration_never_report_success(self):
         self.assertEqual(self.run_probe("28"), "failed")

@@ -13,7 +13,7 @@ globalThis.fetch = async (url, options) => {
     return {ok: true, json: async () => ({ok: true})};
 };
 const response = value => ({data: {result: {networkInfo: value, ipv4addr: '192.0.2.1'}}});
-for (const value of ['netFailed', 'dnsFailed', 'netSuccess', 'checking']) {
+for (const value of ['netFailed', 'dnsFailed', 'checking']) {
     const result = await swrtNetworkStatus(response(value));
     assert.equal(result.data.result.networkInfo, value);
 }
@@ -30,3 +30,6 @@ for (const fetcher of [
     result = await swrtNetworkStatus(response('softSourceFailed'));
     assert.equal(result.data.result.networkInfo, 'softSourceFailed');
 }
+globalThis.fetch = async () => ({ok: true, json: async () => ({ok: false, available: true})});
+result = await swrtNetworkStatus(response('netSuccess'));
+assert.equal(result.data.result.networkInfo, 'softSourceFailed');
