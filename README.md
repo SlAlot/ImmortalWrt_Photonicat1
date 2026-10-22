@@ -60,11 +60,13 @@
 
 | 文件名特征 | 内容 |
 | --- | --- |
-| `*-ariaboard_photonicat-squashfs-sysupgrade.img.gz` | SquashFS 完整镜像 |
-| `*-ariaboard_photonicat-ext4-sysupgrade.img.gz` | ext4 完整镜像 |
+| `immortalwrt-photonicat-1-squashfs-sysupgrade-<版本号>.img.gz` | SquashFS 完整镜像 |
+| `immortalwrt-photonicat-1-ext4-sysupgrade-<版本号>.img.gz` | ext4 完整镜像 |
 | `sha256sums` | 发布文件的 SHA-256 校验清单 |
 
-同一版本还提供实际安装的软件包清单、最终构建配置、源码与 feeds 版本及镜像检查报告。下载后使用 `sha256sums` 校对文件完整性。
+版本号从 `1.0` 开始，依次为 `1.1`、`1.2`，到 `1.9` 后递增为 `2.0`。Release 仅保留上述三个附件，下载后使用 `sha256sums` 校对文件完整性。GitHub 自动显示的 “Source code” 是项目源码，不能用于刷机。
+
+实际安装的软件包清单、最终构建配置、源码与 feeds 版本、镜像检查报告和日志保存在对应 Actions 构建的 `SWRT-build-diagnostics-<构建编号>` 附件中，保留 7 天。
 
 ### USB 线刷
 
@@ -121,6 +123,8 @@ Docker 默认已集成。根分区为 1 GiB，部署容器前建议将 Docker �
 向 `main` 推送构建配置、预置文件、软件包、脚本、测试或工作流变更时自动构建。仅修改 README 或文档不会触发完整固件编译。Pull Request 运行检查任务。
 
 `main` 分支构建成功后自动发布到 Releases。依赖解析、必需插件检查、编译或镜像验证失败时，不发布该次固件。
+
+发布版本根据仓库中已有的 `v<版本号>` Release 自动递增。仅整理命名与发布文件时，维护提交可加 `[skip firmware]` 跳过完整编译，脚本与集成检查仍照常运行；手动运行工作流仍执行完整构建。
 
 ### 修改配置与依赖
 

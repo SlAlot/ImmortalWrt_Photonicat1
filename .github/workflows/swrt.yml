@@ -29,7 +29,8 @@ jobs:
           python3 -m unittest discover -s tests -v
           git diff --check
   build:
-    if: github.event_name != 'pull_request'
+    # Packaging-only maintenance can skip compilation while retaining checks.
+    if: github.event_name != 'pull_request' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip firmware]'))
     needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 360
@@ -88,18 +89,18 @@ jobs:
           fi
           python3 ../scripts/check-config.py .config
       - name: Verify and collect firmware
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python3 scripts/collect-firmware.py openwrt firmware-release
-          cp README.md firmware-release/FLASHING-README.md
-          cp docs/COMPATIBILITY.md firmware-release/COMPATIBILITY.md
-          cd firmware-release
-          rm -f sha256sums
-          sha256sum -- * > ../sha256sums.new
-          mv ../sha256sums.new sha256sums
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > release-history.json
+          version=$(python3 scripts/release-version.py release-history.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          python3 scripts/collect-firmware.py openwrt firmware-release "$version"
       - name: Save firmware
         uses: actions/upload-artifact@v4
         with:
-          name: SWRT-Photonicat1-${{ github.run_number }}
+          name: SWRT-Photonicat1-v${{ steps.release.outputs.version }}
           path: firmware-release/
           if-no-files-found: error
           retention-days: 14
@@ -107,11 +108,12 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+          FIRMWARE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          tag="SWRT-Photonicat1-$(date -u +%Y%m%d-%H%M%S)-$GITHUB_RUN_NUMBER"
+          tag="v$FIRMWARE_VERSION"
           gh release create "$tag" firmware-release/* \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "$tag" --notes-file docs/RELEASE-NOTES.md
+            --title "SWRT 光影猫一代 $tag" --notes-file docs/RELEASE-NOTES.md
       - name: Save build logs and resolved configuration
         if: always()
         uses: actions/upload-artifact@v4
@@ -122,5 +124,6 @@ jobs:
             openwrt/swrt-metadata/
             openwrt/.config
             openwrt/logs/
+            release-history.json
           include-hidden-files: true
           retention-days: 7

@@ -47,12 +47,23 @@ class ImagePublicationTests(unittest.TestCase):
 
     def collect(self):
         return subprocess.run([sys.executable, str(ROOT / "scripts/collect-firmware.py"),
-            str(self.root / "build"), str(self.root / "release")], capture_output=True, text=True)
+            str(self.root / "build"), str(self.root / "release"), "1.0"], capture_output=True, text=True)
 
     def test_fwtool_trailer_and_output_checksums(self):
         self.write_images()
         result = self.collect()
         self.assertEqual(result.returncode, 0, result.stderr)
+        release = self.root / "release"
+        names = {f"immortalwrt-photonicat-1-{fs}-sysupgrade-1.0.img.gz"
+                 for fs in ("squashfs", "ext4")}
+        self.assertEqual({p.name for p in release.iterdir()}, names | {"sha256sums"})
+        for fs in ("squashfs", "ext4"):
+            self.assertEqual((release / f"immortalwrt-photonicat-1-{fs}-sysupgrade-1.0.img.gz").read_bytes(),
+                             (self.target / f"swrt-ariaboard_photonicat-{fs}-sysupgrade.img.gz").read_bytes())
+        audit = self.root / "build/swrt-metadata"
+        self.assertTrue((audit / self.manifest.name).is_file())
+        self.assertTrue((audit / "profiles.json").is_file())
+        self.assertEqual({v["file"] for v in json.loads((audit / "image-validation.json").read_text())}, names)
         for line in (self.root / "release/sha256sums").read_text().splitlines():
             digest, name = line.split("  ", 1)
             self.assertEqual(digest, hashlib.sha256((self.root / "release" / name).read_bytes()).hexdigest())

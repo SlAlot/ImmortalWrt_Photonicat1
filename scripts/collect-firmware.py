@@ -3,6 +3,7 @@
 import hashlib
 import json
 import pathlib
+import re
 import shutil
 import struct
 import sys
@@ -10,7 +11,12 @@ import zlib
 
 build = pathlib.Path(sys.argv[1])
 out = pathlib.Path(sys.argv[2])
+version = sys.argv[3]
+assert re.fullmatch(r"[1-9][0-9]*\.[0-9]", version), "Invalid firmware version"
 out.mkdir(parents=True, exist_ok=True)
+assert not any(out.iterdir()), "Release output directory must be empty"
+audit = build / "swrt-metadata"
+audit.mkdir(parents=True, exist_ok=True)
 target = build / "bin/targets/rockchip/armv8"
 profiles = json.loads((target / "profiles.json").read_text())
 profile = profiles["profiles"]["ariaboard_photonicat"]
@@ -57,15 +63,15 @@ for info in profile["images"]:
     for offset in (446, 462):
         start, size = struct.unpack_from("<II", prefix, offset + 8)
         assert start and size and (start + size) * 512 <= expanded
-    shutil.copy2(src, out / src.name)
-    verified.append({"file": src.name, "sha256": digest, "expanded_bytes": expanded})
+    name = f"immortalwrt-photonicat-1-{info['filesystem']}-sysupgrade-{version}.img.gz"
+    shutil.copy2(src, out / name)
+    verified.append({"file": name, "source_file": src.name,
+                     "sha256": digest, "expanded_bytes": expanded})
 
 assert {entry["filesystem"] for entry in profile["images"] if entry["type"] == "sysupgrade"} == {"ext4", "squashfs"}
 for src in [target / "profiles.json", manifests[0], *target.glob("*.buildinfo")]:
-    shutil.copy2(src, out / src.name)
-for src in (build / "swrt-metadata").iterdir():
-    shutil.copy2(src, out / src.name)
-(out / "image-validation.json").write_text(json.dumps(verified, indent=2) + "\n")
+    shutil.copy2(src, audit / src.name)
+(audit / "image-validation.json").write_text(json.dumps(verified, indent=2) + "\n")
 with (out / "sha256sums").open("w") as checksums:
     for src in sorted(out.iterdir()):
         if src.name != "sha256sums" and src.is_file():
