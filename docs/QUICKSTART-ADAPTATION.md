@@ -27,7 +27,7 @@
 
 加入 `ttyd`、`luci-app-ttyd` 与简体中文翻译，构建配置和最终镜像清单同时检查，缺失则禁止发布。默认绑定 LAN、7681 端口、运行 `/bin/login`，不直接启动免登录 shell。入口为“系统 → 终端”；首页已有终端按钮也指向同一 LuCI 页面。
 
-终端 Banner 保持 `SWRT / S-Photonicat1 / Powered by ImmortalWrt`。软、硬件流量卸载配置均保持开启。
+终端 Banner 使用 SWRT 字符画，下方标注作者 `SlAlot` 和 `ImmortalWrt`。软、硬件流量卸载配置均保持开启。
 
 ## 验证范围
 

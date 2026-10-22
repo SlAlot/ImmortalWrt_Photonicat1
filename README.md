@@ -117,7 +117,7 @@ RK3568 的源码判断、相关 GitHub 项目、软件与硬件卸载区别及�
 
 在 iStore 中安装与当前系统架构、软件包格式及依赖相符的应用。
 
-首页加入网络面板快捷磁贴，点击进入 LuCI → 服务 → 网络面板，Logo 跟随 Argon 明暗模式。终端入口在 **系统 → 终端**，登录后显示 `SWRT / S-Photonicat1 / Powered by ImmortalWrt` Banner。
+首页加入网络面板快捷磁贴，点击进入 LuCI → 服务 → 网络面板，Logo 跟随 Argon 明暗模式。终端入口在 **系统 → 终端**，登录后显示 SWRT 字符画，下方标注作者 `SlAlot` 和 `ImmortalWrt`。
 
 QuickStart 0.13.0 会额外请求 `packages.adb.asc`，ImmortalWrt 源没有此文件。本项目改为检测当前 APK 配置中的 base 索引 `packages.adb`（最多缓存 60 秒）；真实的网络、DNS、源连接失败仍显示错误。“软件源配置”进入系统软件包管理页，避免旧向导将 ImmortalWrt 源替换成 OpenWrt 源。索引可达不代表所有自定义包均有在线更新；内核模块仍须匹配本固件构建版本。
 
