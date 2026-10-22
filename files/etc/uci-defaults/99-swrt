@@ -18,6 +18,8 @@ uci set network_panel.main.boot_enabled='1'
 
 # QModem's at_tool=0 selects Tom; discovered instances retain shared ubus AT.
 uci set qmodem.main.at_tool='0'
+# This upstream configuration omits the USB flag while its backend defaults off.
+uci set qmodem.main.enable_usb_scan='1'
 
 uci commit system
 uci commit luci

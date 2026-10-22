@@ -1,5 +1,7 @@
 # Compatibility and device acceptance
 
+最新依赖与上游审查、修复范围及实机验证事项见 [2026-10-22 检查报告](AUDIT-2026-10-22.md)。
+
 ## QuickStart and iStore
 
 - Include the QuickStart backend, Lua compatibility, iStore task services and storage utilities. The page package alone is insufficient.
@@ -20,6 +22,12 @@
 - QModem controls dialing. Network Panel keeps auto mode and its shared-channel ownership checks. Do not force standalone mode while QModem owns its AT port.
 - Use generic kernel USB/MHI drivers; do not mix competing vendor driver stacks. USB composition and modem firmware still determine usable protocols.
 - MWAN3 enrollment only accepts the matching QModem IPv4 interface; IPv6 and management bridges are excluded. Repeated events preserve user changes. Remove stale MWAN3 members manually when deleting modem instances.
+- Flow offloading defaults off to keep policy and proxy processing on the normal forwarding path. MWAN3 retains the pinned iptables-nft compatibility path; its OpenWrt 25.12 limitations still require device tests. The separate QModem uplink manager is excluded.
+- USB scanning is explicitly enabled on first boot, and scan flags are persisted. Delayed scans run as procd-owned one-shot processes with bounded readiness checks; disabled scans and auto-probe blocking are respected. FM350's `Generic` carrier placeholder falls back to COPS.
+
+## MediaTek Wi-Fi
+
+MT7921/MT7922 PCIe share mt7921e with both firmware packages. MT7921 USB/SDIO variants and mt792x-usb are also included and checked in the image manifest. Device IDs and bus topology determine support; Bluetooth is outside this Wi-Fi change. Reconfigure wireless after replacing the adapter.
 
 ## Docker and storage
 

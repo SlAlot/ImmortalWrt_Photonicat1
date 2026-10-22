@@ -26,6 +26,8 @@ jobs:
           bash -n scripts/prepare.sh diy.sh
           shellcheck scripts/prepare.sh diy.sh
           shellcheck -s sh -e SC1091 files/etc/uci-defaults/99-swrt files/etc/hotplug.d/iface/95-swrt-qmodem-mwan
+          sh -n files/usr/share/qmodem/swrt-scan-once
+          shellcheck -s sh files/usr/share/qmodem/swrt-scan-once
           python3 -m unittest discover -s tests -v
           git diff --check
   build:

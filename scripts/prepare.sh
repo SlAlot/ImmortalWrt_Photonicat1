@@ -11,6 +11,7 @@ cp -a "$repo_dir/files" "$build_dir/"
 mkdir -p "$build_dir/package/swrt"
 cp -a "$repo_dir/package/wlmb-server" "$build_dir/package/swrt/"
 find "$build_dir/files/etc/uci-defaults" "$build_dir/files/etc/hotplug.d" -type f -exec chmod 755 {} +
+chmod 755 "$build_dir/files/usr/share/qmodem/swrt-scan-once"
 
 cd "$build_dir"
 bash "$repo_dir/diy.sh"

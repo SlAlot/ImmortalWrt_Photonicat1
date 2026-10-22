@@ -33,9 +33,11 @@
 | 多 WAN | MWAN3，有线 WAN、Wi-Fi 中继与蜂窝链路故障切换 |
 | 网络工具 | PassWall、OpenClash、SmartDNS、ZeroTier |
 | 设备管理 | CPU 调频、电池状态与光影猫电源管理 |
-| 驱动 | 板载/扩展无线、USB 2/3、蜂窝串口与数据接口、USB 存储/UAS、ext4 |
+| 驱动 | 板载/扩展无线、MT7921/MT7922、USB 2/3、蜂窝串口与数据接口、USB 存储/UAS、ext4 |
 
 蜂窝接口包含通用 QMI、MBIM、NCM、ECM、RNDIS、ACM/WDM 与 PCIe MHI 支持。实际可用协议取决于模组型号、固件与连接方式。
+
+MT7921/MT7922 的 PCIe 支持共用 `mt7921e`，并包含两种芯片的 Wi-Fi 固件；另包含 MT7921 系列 USB/SDIO 驱动。USB 支持不代表任意 USB 网卡均适用，仍取决于具体芯片与设备 ID。蓝牙不在此次 Wi-Fi 驱动范围内。原有 QCNFA765 / WCN6855 与板载无线支持继续保留；更换网卡后按实际无线设备重新配置。
 
 ## 默认配置
 
@@ -92,6 +94,8 @@
 
 QModem 默认使用 Tom AT 工具，并启用 ubus 共享支持；拨号组件使用 Tom 定制的 Quectel CM。界面仅启用 `luci-app-qmodem-next`，排除依赖旧界面的 SMS、MWAN、TTL 和 HC 插件。Next 所需的短信后端及转发组件正常保留。
 
+默认开启 USB 扫描，开机扫描由 procd 托管并等待扫描服务就绪；可在 QModem 设置中关闭对应扫描。扫描开关会显式保存，避免上游界面将默认值删除后导致重启不扫描。
+
 QModem 负责蜂窝拨号，网络面板默认使用 `auto` 模式识别共享通道。QModem 已占用 AT 端口时，不要将面板强制切换为独立串口模式。
 
 ### 多 WAN 故障切换
@@ -103,6 +107,8 @@ QModem 负责蜂窝拨号，网络面板默认使用 `auto` 模式识别共享�
 ```
 
 Wi-Fi 中继需自行配置。QModem 创建的 IPv4 拨号接口首次上线时会加入 MWAN3 策略；IPv6 与管理桥接口不加入该策略。删除模组实例后，可在 MWAN3 中清理对应旧成员。
+
+默认关闭软、硬件流量卸载，让多 WAN 策略和代理规则经过正常转发路径。MWAN3 使用固定 feeds 中的 iptables-nft 兼容方案；具体切换与代理组合仍需实测。为避免多个策略路由服务同时接管出口，不集成 QModem 的另一套 uplink manager；PassWall 与 OpenClash 应按实际需求选用，避免同时接管相同流量。
 
 ### iStore 与 Docker
 
@@ -151,6 +157,7 @@ Docker 默认已集成。根分区为 1 GiB，部署容器前建议将 Docker �
 
 ## 已知问题与兼容性
 
+- **依赖与上游审查**：修复记录、证据和剩余验证范围见 [2026-10-22 检查报告](docs/AUDIT-2026-10-22.md)。
 - **首页兼容性**：QuickStart 部分组件可能受到主题样式、浏览器缓存或平台温度/存储接口影响，详见 [兼容性说明](docs/COMPATIBILITY.md)。
 - **固件更新**：本项目使用 iStore 首页与商店，系统仍基于 ImmortalWrt；固件更新请使用本仓库发布的版本，不使用 iStoreOS OTA 镜像。
 - **软件包兼容性**：系统使用 APK；其他固件的 IPK 或不同内核 ABI 的驱动不能直接混装。商店中的应用仍需核对设备兼容性。

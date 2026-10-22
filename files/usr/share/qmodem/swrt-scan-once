@@ -1,0 +1,26 @@
+#!/bin/sh
+# A procd-owned one-shot scan waits for the scanner instead of orphaning a job.
+bus=$1
+case "$bus" in usb|pcie) ;; *) exit 2 ;; esac
+
+scan_enabled() {
+    [ "$(uci -q get qmodem.main.block_auto_probe)" != 1 ] &&
+        [ "$(uci -q get "qmodem.main.enable_${bus}_scan")" = 1 ]
+}
+
+scan_enabled || exit 0
+delay=$(uci -q get qmodem.main.start_delay)
+case "$delay" in ''|*[!0-9]*|0) delay=15 ;; esac
+[ "$delay" -le 99 ] || delay=99
+sleep "$delay"
+attempt=0
+while [ "$attempt" -lt 30 ]; do
+    scan_enabled || exit 0
+    if timeout 5 /usr/bin/modem_scanc status >/dev/null 2>&1; then
+        exec timeout 10 /usr/bin/modem_scanc scan "$bus"
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+done
+logger -t swrt-qmodem "Scanner unavailable; boot scan for $bus timed out"
+exit 1

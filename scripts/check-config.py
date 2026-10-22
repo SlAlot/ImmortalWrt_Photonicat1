@@ -23,6 +23,10 @@ required = [
     "PACKAGE_docker", "PACKAGE_dockerd", "PACKAGE_luci-app-dockerman",
     "PACKAGE_pcat-mgr", "PACKAGE_u-boot-photonicat-rk3568",
     "PACKAGE_kmod-ath10k-sdio", "PACKAGE_kmod-ath11k-pci",
+    "PACKAGE_kmod-mt7921e", "PACKAGE_kmod-mt7921u", "PACKAGE_kmod-mt7921s",
+    "PACKAGE_kmod-mt7921-firmware", "PACKAGE_kmod-mt7922-firmware",
+    "PACKAGE_kmod-mt792x-common", "PACKAGE_kmod-mt792x-usb",
+    "PACKAGE_iptables-nft", "PACKAGE_ip6tables-nft", "PACKAGE_ipset", "PACKAGE_ip-full",
     "PACKAGE_kmod-usb-serial-option", "PACKAGE_kmod-usb-serial-qualcomm",
     "PACKAGE_kmod-usb-acm", "PACKAGE_kmod-usb-wdm",
     "PACKAGE_kmod-usb-net-cdc-ether", "PACKAGE_kmod-usb-net-cdc-mbim",
@@ -43,6 +47,8 @@ forbidden = [
     "PACKAGE_qmodem_VENDOR_MHI_PCIe_DRIVER",
     "PACKAGE_qmodem_NSS_MHI_PCIe_DRIVER", "PACKAGE_qmodem_INCLUDE_nss-qmi-wwan",
     "PACKAGE_qmodem_USING_QWRT_QUECTEL_CM_5G", "PACKAGE_qmodem_USING_NORMAL_QUECTEL_CM",
+    "PACKAGE_qmodem-uplink-manager", "PACKAGE_luci-app-qmodem-uplink",
+    "PACKAGE_iptables-zz-legacy", "PACKAGE_ip6tables-zz-legacy",
 ]
 errors = [f"Missing {key}" for key in required if values.get("CONFIG_" + key) != "y"]
 errors += [f"Unexpected {key}" for key in forbidden

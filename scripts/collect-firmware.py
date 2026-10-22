@@ -28,11 +28,17 @@ required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "qmodem-smsd", "sms-forwarder-next",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
-            "pcat-mgr", "luci-app-passwall", "luci-app-openclash"}
+            "pcat-mgr", "luci-app-passwall", "luci-app-openclash",
+            "kmod-mt7921e", "kmod-mt7921u", "kmod-mt7921s",
+            "kmod-mt7921-firmware", "kmod-mt7922-firmware", "kmod-mt792x-usb",
+            "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
+            "docker-compose", "luci-app-dockerman", "modem_scan"}
 assert required <= packages, f"Missing installed packages: {required - packages}"
 forbidden = {"luci-app-modemband", "modemband", "luci-app-sms-tool-js",
              "luci-app-qmodem", "luci-app-qmodem-sms", "luci-app-qmodem-mwan",
-             "luci-app-qmodem-ttl", "luci-app-qmodem-hc"}
+             "luci-app-qmodem-ttl", "luci-app-qmodem-hc",
+             "qmodem-uplink-manager", "luci-app-qmodem-uplink",
+             "iptables-zz-legacy", "ip6tables-zz-legacy"}
 assert not forbidden & packages, f"Conflicting installed packages: {forbidden & packages}"
 
 verified = []

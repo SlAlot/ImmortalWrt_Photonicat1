@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import textwrap
 import unittest
+from feed_fixtures import write_qmodem_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,6 +23,7 @@ class FeedCompatibilityTests(unittest.TestCase):
         self.weechat.write_text("LUCI_DEPENDS:=+luci-base +weechat +rpcd-mod-ucode\n")
         self.qmodem.write_text("+PACKAGE_qmodem_GENERIC_MHI_PCIe_DRIVER:kmod-mhi-wwan \\\n")
         self.kernel.write_text("define KernelPackage/mhi-net\nendef\n")
+        write_qmodem_runtime(self.root)
 
     def patch(self):
         return subprocess.run([os.sys.executable, str(ROOT / "scripts/patch-feeds.py"), str(self.root)],
@@ -70,6 +72,7 @@ class PreparePipelineTests(unittest.TestCase):
             path = self.build / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
+        write_qmodem_runtime(self.build)
         (self.build / "scripts").mkdir()
         feeds = self.build / "scripts/feeds"
         feeds.write_text("""#!/bin/sh

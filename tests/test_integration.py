@@ -32,7 +32,11 @@ class ImagePublicationTests(unittest.TestCase):
             "qmodem-smsd", "sms-forwarder-next",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
-            "pcat-mgr", "luci-app-passwall", "luci-app-openclash")))
+            "pcat-mgr", "luci-app-passwall", "luci-app-openclash",
+            "kmod-mt7921e", "kmod-mt7921u", "kmod-mt7921s",
+            "kmod-mt7921-firmware", "kmod-mt7922-firmware", "kmod-mt792x-usb",
+            "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
+            "docker-compose", "luci-app-dockerman", "modem_scan")))
 
     def write_images(self):
         images = []
@@ -88,6 +92,20 @@ class ImagePublicationTests(unittest.TestCase):
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Conflicting installed packages", result.stderr)
+
+    def test_second_route_manager_blocks_release(self):
+        self.write_images()
+        self.manifest.write_text(self.manifest.read_text() + "\nqmodem-uplink-manager - 1.0\n")
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Conflicting installed packages", result.stderr)
+
+    def test_missing_wifi_firmware_blocks_release(self):
+        self.write_images()
+        self.manifest.write_text(self.manifest.read_text().replace("kmod-mt7922-firmware - 1.0", ""))
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("kmod-mt7922-firmware", result.stderr)
 
 @unittest.skipIf(os.name == "nt", "OpenWrt shell integration runs on Linux CI")
 class QModemFailoverTests(unittest.TestCase):
