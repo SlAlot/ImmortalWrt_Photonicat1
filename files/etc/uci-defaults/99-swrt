@@ -27,7 +27,7 @@ uci commit quickstart
 uci commit network_panel
 uci commit qmodem
 
-for service in quickstart wlmb-server dockerd; do
+for service in quickstart wlmb-server dockerd ttyd; do
     [ ! -x "/etc/init.d/$service" ] || "/etc/init.d/$service" enable
 done
 

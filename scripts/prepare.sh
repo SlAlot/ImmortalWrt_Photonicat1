@@ -12,11 +12,13 @@ mkdir -p "$build_dir/package/swrt"
 cp -a "$repo_dir/package/wlmb-server" "$build_dir/package/swrt/"
 find "$build_dir/files/etc/uci-defaults" "$build_dir/files/etc/hotplug.d" -type f -exec chmod 755 {} +
 chmod 755 "$build_dir/files/usr/share/qmodem/swrt-scan-once"
+chmod 755 "$build_dir/files/usr/libexec/swrt-apk-status"
 
 cd "$build_dir"
 bash "$repo_dir/diy.sh"
 ./scripts/feeds update -a
 python3 "$repo_dir/scripts/patch-feeds.py" "$build_dir"
+python3 "$repo_dir/scripts/patch-quickstart.py" "$build_dir"
 ./scripts/feeds update -i luci qmodem
 # Install standard feeds first, then the requested integrations. Do not force
 # unrelated NAS packages over existing ImmortalWrt packages.

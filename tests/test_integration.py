@@ -30,6 +30,7 @@ class ImagePublicationTests(unittest.TestCase):
         self.manifest.write_text("\n".join(name + " - 1.0" for name in (
             "qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "qmodem-smsd", "sms-forwarder-next",
+            "ttyd", "luci-app-ttyd", "luci-i18n-ttyd-zh-cn", "curl", "luci-app-package-manager",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "pcat-mgr", "luci-app-passwall", "luci-app-openclash",
@@ -82,6 +83,13 @@ class ImagePublicationTests(unittest.TestCase):
     def test_missing_package_blocks_release(self):
         self.write_images()
         self.manifest.write_text(self.manifest.read_text().replace("wlmb-server - 1.0", ""))
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Missing installed packages", result.stderr)
+
+    def test_missing_terminal_blocks_release(self):
+        self.write_images()
+        self.manifest.write_text(self.manifest.read_text().replace("ttyd - 1.0", ""))
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Missing installed packages", result.stderr)

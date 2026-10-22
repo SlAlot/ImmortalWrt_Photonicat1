@@ -18,6 +18,8 @@ required = [
     "PACKAGE_kmod-mhi-wwan-ctrl", "PACKAGE_kmod-mhi-wwan-mbim",
     "PACKAGE_qmodem-smsd", "PACKAGE_sms-forwarder-next", "PACKAGE_wlmb-server",
     "PACKAGE_luci-app-quickstart", "PACKAGE_quickstart", "PACKAGE_luci-app-store",
+    "PACKAGE_ttyd", "PACKAGE_luci-app-ttyd", "PACKAGE_luci-i18n-ttyd-zh-cn",
+    "PACKAGE_curl", "PACKAGE_luci-app-package-manager",
     "PACKAGE_luci-compat", "PACKAGE_luci-lua-runtime", "PACKAGE_luci-lib-ipkg",
     "PACKAGE_tar", "PACKAGE_xz-utils", "PACKAGE_xz",
     "PACKAGE_docker", "PACKAGE_dockerd", "PACKAGE_luci-app-dockerman",

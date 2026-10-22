@@ -1,0 +1,6 @@
+config ttyd 'core'
+	option enable '1'
+	option interface '@lan'
+	option port '7681'
+	option command '/bin/login'
+	option check_origin '1'

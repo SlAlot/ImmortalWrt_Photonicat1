@@ -6,6 +6,7 @@ import tempfile
 import textwrap
 import unittest
 from feed_fixtures import write_qmodem_runtime
+from test_quickstart import write_quickstart
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -73,6 +74,7 @@ class PreparePipelineTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
         write_qmodem_runtime(self.build)
+        write_quickstart(self.build)
         (self.build / "scripts").mkdir()
         feeds = self.build / "scripts/feeds"
         feeds.write_text("""#!/bin/sh
