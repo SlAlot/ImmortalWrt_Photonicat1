@@ -108,7 +108,7 @@ QModem 负责蜂窝拨号，网络面板默认使用 `auto` 模式识别共享�
 
 Wi-Fi 中继需自行配置。QModem 创建的 IPv4 拨号接口首次上线时会加入 MWAN3 策略；IPv6 与管理桥接口不加入该策略。删除模组实例后，可在 MWAN3 中清理对应旧成员。
 
-默认关闭软、硬件流量卸载，让多 WAN 策略和代理规则经过正常转发路径。MWAN3 使用固定 feeds 中的 iptables-nft 兼容方案；具体切换与代理组合仍需实测。为避免多个策略路由服务同时接管出口，不集成 QModem 的另一套 uplink manager；PassWall 与 OpenClash 应按实际需求选用，避免同时接管相同流量。
+软、硬件流量卸载默认均开启。硬件选项是否实际产生硬件转发取决于网卡、内核驱动及连接路径，需在设备上验证，不能仅凭界面开关判断。MWAN3 使用固定 feeds 中的 iptables-nft 兼容方案；具体切换与代理组合仍需实测。为避免多个策略路由服务同时接管出口，不集成 QModem 的另一套 uplink manager；PassWall 与 OpenClash 应按实际需求选用，避免同时接管相同流量。
 
 ### iStore 与 Docker
 

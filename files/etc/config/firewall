@@ -3,9 +3,9 @@ config defaults
 	option input 'REJECT'
 	option output 'ACCEPT'
 	option forward 'REJECT'
-	# Keep policy routing and proxy hooks on the normal forwarding path.
-	option flow_offloading '0'
-	option flow_offloading_hw '0'
+	# Keep both offload options enabled; actual hardware use is driver-dependent.
+	option flow_offloading '1'
+	option flow_offloading_hw '1'
 	option fullcone '1'
 	option synflood_protect '1'
 
