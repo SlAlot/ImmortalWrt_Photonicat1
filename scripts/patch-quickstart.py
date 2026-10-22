@@ -13,6 +13,11 @@ def patch_quickstart(root):
     base = root / "feeds/nas_luci/luci/luci-app-quickstart"
     js = base / "htdocs/luci-static/quickstart/index.js"
     replace = patches.replace_once
+    # LuCI caches the routes across requests. Checking pgrep here can freeze a
+    # temporary early-boot backend outage into a permanent homepage redirect.
+    replace(base / "luasrc/controller/quickstart.lua",
+            '    if luci.sys.call("pgrep quickstart >/dev/null") == 0 then',
+            '    if nixio.fs.access("/usr/sbin/quickstart") then')
     replace(js, 'var go=Object.defineProperty,',
             'import {swrtNetworkStatus} from "/luci-static/swrt/quickstart.js";\nvar go=Object.defineProperty,')
     replace(js, 'Status:{GET(){return W("/u/network/status/",{method:"GET"})}}',

@@ -27,6 +27,16 @@ window.open(`${(B=(z=window.quickstart_configs)==null?void 0:z.ttyd)!=null&&B.ss
     template = base / "luasrc/view/quickstart/main.htm"
     template.parent.mkdir(parents=True, exist_ok=True)
     template.write_text('      window.token =\n<%+footer%>', encoding="utf-8")
+    controller = base / "luasrc/controller/quickstart.lua"
+    controller.parent.mkdir(parents=True, exist_ok=True)
+    controller.write_text('''function index()
+    if luci.sys.call("pgrep quickstart >/dev/null") == 0 then
+        entry({"admin", "quickstart"}, template("quickstart/home"), _("QuickStart"), 1).leaf = true
+    else
+        entry({"admin", "quickstart"}, call("redirect_fallback")).leaf = true
+    end
+end
+''', encoding="utf-8")
     return js
 
 
@@ -49,6 +59,34 @@ class QuickStartPatchTests(unittest.TestCase):
         result = subprocess.run(["node", str(ROOT / "tests/quickstart-status.mjs")],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(shutil.which("lua5.1") or shutil.which("lua"), "Lua 5.1 runs on Linux CI")
+    def test_routes_register_before_backend_starts(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_quickstart(root)
+            patcher.patch_quickstart(root)
+            controller = root / "feeds/nas_luci/luci/luci-app-quickstart/luasrc/controller/quickstart.lua"
+            harness = root / "route-test.lua"
+            harness.write_text('''
+luci = { sys = { call = function() error("Route registration must not inspect running processes") end } }
+local installed = true
+nixio = { fs = { access = function(path) assert(path == "/usr/sbin/quickstart"); return installed end } }
+local route
+entry = function(path, action) route = action; return {} end
+template = function(path) return { kind = "template", path = path } end
+call = function(name) return { kind = "call", name = name } end
+_ = function(text) return text end
+dofile(arg[1])
+index()
+assert(route.kind == "template" and route.path == "quickstart/home")
+installed = false
+index()
+assert(route.kind == "call" and route.name == "redirect_fallback")
+''', encoding="utf-8")
+            result = subprocess.run([shutil.which("lua5.1") or shutil.which("lua"),
+                                     str(harness), str(controller)], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
 
 
 @unittest.skipIf(os.name == "nt", "The BusyBox-compatible probe runs on Linux CI")

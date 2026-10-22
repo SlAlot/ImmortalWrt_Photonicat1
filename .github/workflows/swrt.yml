@@ -22,7 +22,7 @@ jobs:
       - name: Check scripts and integration invariants
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck
+          sudo apt-get install -y shellcheck lua5.1
           bash -n scripts/prepare.sh diy.sh
           shellcheck scripts/prepare.sh diy.sh
           shellcheck -s sh -e SC1091 files/etc/uci-defaults/99-swrt files/etc/hotplug.d/iface/95-swrt-qmodem-mwan

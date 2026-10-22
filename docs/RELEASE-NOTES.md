@@ -6,6 +6,7 @@
 - SlAlot 网络面板、iStore QuickStart 首页、iStore 商店、Docker / Compose。
 - 保留无线、USB 驱动、PassWall、OpenClash、MWAN3 等原有功能，包含 MT7921/MT7922 驱动与固件。
 - 主机名 `S-Photonicat1`，网关 `192.168.17.1`，终端 Banner `SWRT`。
+- 修复 QuickStart 首页因开机路由缓存而跳回状态页的问题；SSH / Web 终端登录保留 BusyBox 和 SWRT 字符画，精简额外提示。
 
 ### 下载
 
