@@ -63,6 +63,8 @@ class PreparePipelineTests(unittest.TestCase):
         for name in (".packageinfo", ".config-package.in"):
             (self.build / "tmp" / name).touch()
         fixtures = {
+            "target/linux/rockchip/image/armv8.mk": "define Device/ariaboard_photonicat\n  DEVICE_PACKAGES := pcat-mgr\nendef\n",
+            "feeds/luci/modules/luci-mod-battstatus/root/usr/libexec/rpcd/luci.battstatus": "\tariaboard,photonicat)\n\t\techo 'Need pcat-mgr'\n\t\t;;\n",
             "feeds/luci/applications/luci-app-weechat/Makefile": "LUCI_DEPENDS:=+weechat \n",
             "feeds/qmodem/application/qmodem/Makefile": "PCIe_DRIVER:kmod-mhi-wwan \n",
             "package/kernel/linux/modules/netdevices.mk": "define KernelPackage/mhi-net\nendef\n",

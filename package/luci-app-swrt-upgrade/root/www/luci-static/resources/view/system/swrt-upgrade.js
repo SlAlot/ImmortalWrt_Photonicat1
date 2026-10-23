@@ -167,7 +167,7 @@ return view.extend({
             ]),
             card('任务状态', [ message, progress, progressText ]),
             card('发布说明', [ notes, releaseLink ]),
-            E('p', { 'class': 'np-footer' }, 'SWRT · SlAlot ｜ 界面复用 SlAlot 网络面板（wlmb-server）')
+            E('p', { 'class': 'np-footer' }, 'SWRT · SlAlot')
         ]);
         keep.checked = false;
         update(initial);

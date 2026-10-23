@@ -20,8 +20,6 @@
 
 界面加载网络面板现有 `wlmb-server/panel.css`，未修改网络面板服务或其更新接口。
 来源：[SlAlot/wlmb-server](https://github.com/SlAlot/wlmb-server)。
-设计参考：[PEIT98 在线升级](https://github.com/PEIT98/ImmortalWrt-Photonicat1-AutoBuild/tree/main/packages/luci-app-online-upgrade)，
-当前代码为本仓库独立实现。
 
 构建在根文件系统打包前写入版本身份，并在发布收集阶段核对它和文件名版本一致。
 旧版未带该身份的固件需先手动升级一次。`/tmp` 中的状态、下载文件与锁不保留到新固件。

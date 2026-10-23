@@ -1,0 +1,7 @@
+{
+  "luci-app-swrt-power": {
+    "description": "Photonicat 1 power policy",
+    "read": { "ubus": { "luci.swrt_power": [ "status", "battery" ] } },
+    "write": { "ubus": { "luci.swrt_power": [ "configure" ] } }
+  }
+}

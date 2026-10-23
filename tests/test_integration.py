@@ -41,7 +41,8 @@ class ImagePublicationTests(unittest.TestCase):
             "coreutils-stat",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
-            "pcat-mgr", "luci-app-passwall", "luci-app-openclash",
+            "swrt-pcat-manager", "luci-app-swrt-power", "luci-mod-battstatus", "glib2", "jsonfilter",
+            "luci-app-passwall", "luci-app-openclash",
             "kmod-mt7921e", "kmod-mt7921u", "kmod-mt7921s",
             "kmod-mt7921-firmware", "kmod-mt7922-firmware", "kmod-mt792x-usb",
             "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
@@ -124,6 +125,13 @@ class ImagePublicationTests(unittest.TestCase):
     def test_second_route_manager_blocks_release(self):
         self.write_images()
         self.manifest.write_text(self.manifest.read_text() + "\nqmodem-uplink-manager - 1.0\n")
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Conflicting installed packages", result.stderr)
+
+    def test_second_mcu_owner_blocks_release(self):
+        self.write_images()
+        self.manifest.write_text(self.manifest.read_text() + "\npcat-mgr - 1.0\n")
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Conflicting installed packages", result.stderr)
