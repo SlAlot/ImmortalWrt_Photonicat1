@@ -1,6 +1,11 @@
 name: Build SWRT Photonicat1
 on:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: '指定版本（例如 1.5）；留空自动递增，必须高于已有发布'
+        required: false
+        type: string
   push:
     branches: [main]
     paths: ['.config', 'feeds.conf.default', 'sources.lock.json', 'diy.sh', 'files/**', 'package/**', 'scripts/**', 'tests/**', '.github/workflows/**']
@@ -22,7 +27,7 @@ jobs:
       - name: Check scripts and integration invariants
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck lua5.1
+          sudo apt-get install -y shellcheck lua5.1 jq libglib2.0-dev libjson-c-dev pkgconf
           bash -n scripts/prepare.sh diy.sh
           shellcheck scripts/prepare.sh diy.sh
           shellcheck -s sh -e SC1091 files/etc/uci-defaults/99-swrt files/etc/hotplug.d/iface/95-swrt-qmodem-mwan
@@ -30,6 +35,14 @@ jobs:
           shellcheck -s sh files/usr/libexec/swrt-apk-status
           sh -n files/usr/share/qmodem/swrt-scan-once
           shellcheck -s sh files/usr/share/qmodem/swrt-scan-once
+          sh -n package/luci-app-swrt-upgrade/root/usr/libexec/swrt-upgrade
+          shellcheck -s sh package/luci-app-swrt-upgrade/root/usr/libexec/swrt-upgrade package/luci-app-swrt-upgrade/root/usr/libexec/rpcd/luci.swrt_upgrade
+          node tests/test_upgrade_frontend.cjs
+          sh -n package/luci-app-swrt-power/root/usr/libexec/rpcd/luci.swrt_power
+          shellcheck -s sh package/luci-app-swrt-power/root/usr/libexec/rpcd/luci.swrt_power
+          sh -n package/swrt-pcat-manager/files/swrt-pcat-manager.init
+          shellcheck -s sh -e SC2034,SC2317 package/swrt-pcat-manager/files/swrt-pcat-manager.init
+          node tests/test_power_frontend.cjs
           python3 -m unittest discover -s tests -v
           git diff --check
   build:
@@ -76,6 +89,16 @@ jobs:
           set -euo pipefail
           bash scripts/prepare.sh "$GITHUB_WORKSPACE/openwrt" 2>&1 | tee prepare.log
           test -s openwrt/swrt-metadata/config.resolved
+      - name: Choose release version and stamp firmware identity
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.release_version }}
+        run: |
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > release-history.json
+          version=$(python3 scripts/release-version.py release-history.json "$REQUESTED_VERSION")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          python3 scripts/stamp-firmware.py openwrt "$version" "$GITHUB_SHA"
       - name: Download all sources
         working-directory: openwrt
         run: |
@@ -93,14 +116,10 @@ jobs:
           fi
           python3 ../scripts/check-config.py .config
       - name: Verify and collect firmware
-        id: release
         env:
-          GH_TOKEN: ${{ github.token }}
+          FIRMWARE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > release-history.json
-          version=$(python3 scripts/release-version.py release-history.json)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          python3 scripts/collect-firmware.py openwrt firmware-release "$version"
+          python3 scripts/collect-firmware.py openwrt firmware-release "$FIRMWARE_VERSION"
       - name: Save firmware
         uses: actions/upload-artifact@v4
         with:

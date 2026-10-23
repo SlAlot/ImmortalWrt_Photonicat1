@@ -1,0 +1,10 @@
+#!/bin/sh
+case "$1" in
+    list) printf '%s\n' '{"status":{},"battery":{},"configure":{"mode":"str","minutes":"int","start":"str","stop":"str","revision":"str","confirm":"int"}}' ;;
+    call)
+        case "$2" in
+            status|battery|configure) /usr/libexec/swrt-power "$2" ;;
+            *) printf '%s\n' '{"ok":false,"message":"不支持的操作"}' ;;
+        esac
+        ;;
+esac

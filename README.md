@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml/badge.svg)](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml)
 
-面向 **光影猫一代（Photonicat 1 / RK3568）** 的定制固件构建项目，基于 ImmortalWrt，集成蜂窝拨号、网络面板、iStore 首页与应用商店、Docker 及多 WAN 故障切换。
+面向 **光影猫一代（Photonicat 1 / RK3568）** 的 ImmortalWrt 定制固件，集成 QModem Next、网络面板、iStore、Docker、多 WAN、DiskMan、SWRT 在线更新与电源管理。
 
 通过 GitHub Actions 自动构建，构建与检查通过后发布固件。**本项目不适用于光影猫二代。**
 
@@ -30,11 +30,12 @@
 | 管理首页 | iStore QuickStart 首页，含网络面板磁贴与深浅色 Logo，保留 LuCI 状态概览入口 |
 | Web 终端 | ttyd，入口：系统 → 终端；LAN 端口 7681，使用系统账号登录 |
 | 磁盘管理 | DiskMan 中文界面，入口：系统 → 磁盘管理；含分区、文件系统与 SMART 工具 |
+| 在线更新 | SWRT 在线更新，入口：系统 → SWRT 在线更新；从本仓库正式 Release 下载、校验并手动确认升级 |
 | 应用商店 | iStore |
 | 容器 | Docker、Docker Compose 与 LuCI Docker 管理 |
 | 多 WAN | MWAN3，有线 WAN、Wi-Fi 中继与蜂窝链路故障切换 |
 | 网络工具 | PassWall、OpenClash、SmartDNS、ZeroTier |
-| 设备管理 | CPU 调频、电池状态与光影猫电源管理 |
+| 设备管理 | CPU 调频、电池状态与光影猫一代管理（电源控制实验性），支持车载 / UPS 延时关机和每日定时开关机 |
 | 驱动 | QCA9377、WCN6855、MT7603、MT76x2、MT7921/MT7922 无线驱动，以及 USB 2/3、蜂窝数据接口、USB 存储/UAS、ext4 |
 
 蜂窝接口包含通用 QMI、MBIM、NCM、ECM、RNDIS、ACM/WDM 与 PCIe MHI 支持。实际可用协议取决于模组型号、固件与连接方式。
@@ -83,14 +84,13 @@
 
 版本号从 `1.0` 开始，依次为 `1.1`、`1.2`，到 `1.9` 后递增为 `2.0`。Release 仅保留上述三个附件，下载后使用 `sha256sums` 校对文件完整性。GitHub 自动显示的 “Source code” 是项目源码，不能用于刷机。
 
-实际安装的软件包清单、最终构建配置、源码与 feeds 版本、镜像检查报告和日志保存在对应 Actions 构建的 `SWRT-build-diagnostics-<构建编号>` 附件中，保留 7 天。
-
 ### 先选对安装方式
 
 | 你的情况 | 使用方式 | 固件是否解压 |
 | --- | --- | --- |
 | 第一次安装、从其他固件切换、系统无法启动 | USB 线刷（RKDevTool） | **必须解压成 `.img`** |
 | 已在使用本项目 SWRT，更新到新版且镜像类型相同 | LuCI 网页升级 | **直接上传 `.img.gz`，无需解压** |
+| 已安装 v1.5 及以后的 SWRT 在线更新功能 | 系统 → SWRT 在线更新 | 自动选择同类型固件，无需手动解压 |
 
 需要切换 `squashfs` / `ext4` 或恢复默认分区布局时，按首次安装方式线刷。**不要使用 iStoreOS 在线升级，也不要上传其他设备或其他项目的固件。**
 
@@ -114,6 +114,17 @@
 
 若提示镜像不兼容、校验失败或分区布局变化，先停止升级，按上面的 USB 线刷步骤处理，**不要勾选“强制刷写”**。跨项目的旧备份不要整套恢复；额外安装的软件包和容器数据需另行备份。
 
+### SWRT 在线更新
+
+1. 打开“系统 → SWRT 在线更新”，点击“检查更新”。
+2. 点击“下载配置备份”，将备份保存到电脑；容器等重要数据另行备份。
+3. 点击“下载并校验”，等待大小、SHA256 和系统兼容性检查通过。
+4. 点击“确认升级”，核对版本和配置选项后开始刷写，期间不要断电。
+
+**默认不保留配置**，重启后访问 `192.168.17.1` 重新设置。下载完成不会自动刷写；只接收本仓库的正式新版，自动匹配当前 SquashFS / ext4 类型，不提供强制刷写或回刷入口。GitHub 无法访问时会明确提示失败，可改用上面的网页手动更新。
+
+**v1.3 等旧版本需先用上面的网页手动升级到 v1.5**，之后才可使用此入口。切换固件类型、分区变化或无法启动时仍需 USB 线刷。
+
 ## 首次使用
 
 ### 蜂窝拨号与网络面板
@@ -123,11 +134,21 @@
 3. 验证接口地址、默认路由、DNS 与实际联网情况。
 4. 打开网络面板，查看信号、模组及网络状态。
 
-QModem 默认使用 Tom AT 工具，并启用 ubus 共享支持；拨号组件使用 Tom 定制的 Quectel CM。界面仅启用 `luci-app-qmodem-next`，排除依赖旧界面的 SMS、MWAN、TTL 和 HC 插件。Next 所需的短信后端及转发组件正常保留。
+QModem 使用 Tom AT 核心与 Tom 定制拨号组件，默认开启 USB 扫描。网络面板保持 `auto` 共享模式；QModem 占用 AT 端口时不要强制切换为独立串口模式。依赖与扫描修复见[兼容性说明](docs/COMPATIBILITY.md)。
 
-默认开启 USB 扫描，开机扫描由 procd 托管并等待扫描服务就绪；可在 QModem 设置中关闭对应扫描。扫描开关会显式保存，避免上游界面将默认值删除后导致重启不扫描。
+### 光影猫一代管理
 
-QModem 负责蜂窝拨号，网络面板默认使用 `auto` 模式识别共享通道。QModem 已占用 AT 端口时，不要将面板强制切换为独立串口模式。
+打开 **系统 → 光影猫一代管理**，查看电量与供电状态；点击“电池详情”展开电压和主板温度。选择模式、填写参数，再保存并确认即可。
+
+| 模式 | 使用方式 |
+| --- | --- |
+| 手动 | 关闭 UPS 与定时计划，全新安装默认使用此模式 |
+| 车载 / UPS | 先接通外部电源，设置断电后延时 1～600 分钟关机；恢复供电取消倒计时 |
+| 每日定时 | 设置每天的开机、关机时间；先确认设备时区和时间正确，修改时区后重启再设置 |
+
+查看页面不会更改策略，保存会替换原计划。保留旧配置时可能沿用已有电源计划，请先核对页面显示的当前模式。
+
+**电源控制仍为实验性功能**，自动关机会中断供网，真实断电与定时唤醒尚需设备验证。首次测试请确保可以重新接入设备；实现与限制见[电源服务说明](package/swrt-pcat-manager/README.md)。
 
 ### 多 WAN 故障切换
 
@@ -137,21 +158,17 @@ QModem 负责蜂窝拨号，网络面板默认使用 `auto` 模式识别共享�
 有线 WAN → Wi-Fi 中继 → 蜂窝网络
 ```
 
-Wi-Fi 中继需自行配置。QModem 创建的 IPv4 拨号接口首次上线时会加入 MWAN3 策略；IPv6 与管理桥接口不加入该策略。删除模组实例后，可在 MWAN3 中清理对应旧成员。
+Wi-Fi 中继需自行配置，QModem 的 IPv4 拨号接口首次上线会加入 MWAN3。删除模组后请清理旧成员；PassWall 与 OpenClash 避免同时接管相同流量。
 
-软、硬件流量卸载默认均开启。硬件选项是否实际产生硬件转发取决于网卡、内核驱动及连接路径，需在设备上验证，不能仅凭界面开关判断。MWAN3 使用固定 feeds 中的 iptables-nft 兼容方案；具体切换与代理组合仍需实测。为避免多个策略路由服务同时接管出口，不集成 QModem 的另一套 uplink manager；PassWall 与 OpenClash 应按实际需求选用，避免同时接管相同流量。
-
-RK3568 的源码判断、相关 GitHub 项目、软件与硬件卸载区别及只读检查方法见[流量卸载研究](docs/OFFLOADING-RK3568.md)。
+**软、硬件流量卸载默认均开启。** 实际硬件转发取决于驱动和数据路径，不能只看界面开关；说明与检查方法见[RK3568 流量卸载研究](docs/OFFLOADING-RK3568.md)。
 
 ### iStore 与 Docker
 
-在 iStore 中安装与当前系统架构、软件包格式及依赖相符的应用。
+首页网络面板磁贴使用蓝白图标，手机端保留左右滑动。终端入口在 **系统 → 终端**，显示 BusyBox、SWRT 字符画与作者署名。
 
-首页加入网络面板快捷磁贴，点击进入 LuCI → 服务 → 网络面板，Logo 跟随 Argon 明暗模式。终端入口在 **系统 → 终端**，登录保留 BusyBox 和 SWRT 字符画，下方标注作者 `SlAlot` 和 `ImmortalWrt`；不再显示 APK 对照表和空密码提示文字。
+软件源默认使用南京大学 ImmortalWrt 镜像，iStore 兼容源独立保留。出现“软件源错误”时检查网络与软件源；首页会保留真实的连接失败提示。不要混装其他固件的 IPK 或内核驱动，详见[兼容性说明](docs/COMPATIBILITY.md)。
 
-QuickStart 0.13.0 会额外请求 `packages.adb.asc`，ImmortalWrt 源没有此文件。本项目改为检测当前 APK 配置中的所有索引 `packages.adb`（最多缓存 60 秒）；真实的网络、DNS、源连接失败仍显示错误。“软件源配置”进入系统软件包管理页，避免旧向导将 ImmortalWrt 源替换成 OpenWrt 源。默认软件源使用南京大学 ImmortalWrt 镜像，iStore 兼容源独立保留；未提供公开二进制索引的构建 feeds 不写入在线源列表。索引可达不代表所有自定义包均有在线更新；内核模块仍须匹配本固件构建版本。
-
-Docker 默认已集成。根分区为 1 GiB，部署容器前建议将 Docker 数据目录设置到独立 ext4 存储，避免镜像与容器数据占满系统盘。
+Docker 已集成，根分区为 1 GiB；部署容器前建议将数据目录设到独立 ext4 存储。DiskMan 入口为 **系统 → 磁盘管理**，进行分区、格式化前先备份数据。
 
 ## 自动构建
 
@@ -160,6 +177,8 @@ Docker 默认已集成。根分区为 1 GiB，部署容器前建议将 Docker �
 1. 打开 [Actions](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml)。
 2. 选择 **Build SWRT Photonicat1**。
 3. 点击 **Run workflow**，选择 `main` 分支并运行。
+
+版本输入框留空时自动递增；需要指定版本时填写 `1.5` 这样的版本号，必须高于已有发布（含草稿）。
 
 ### 推送触发
 
@@ -175,6 +194,7 @@ Docker 默认已集成。根分区为 1 GiB，部署容器前建议将 Docker �
 - 在 [`files/`](files/) 中维护固件预置文件。
 - 源码与 feeds 使用固定提交，版本记录在 [`sources.lock.json`](sources.lock.json)；更新 feeds 时同步修改 [`feeds.conf.default`](feeds.conf.default)。
 - 网络面板使用作者正式发布的 ARM64 musl 程序，经固定 SHA-256 校验后封装为系统原生软件包。更新时同步修改锁文件及 [软件包定义](package/wlmb-server/Makefile) 中的版本与摘要。
+- 安装清单、最终配置、镜像检查报告和日志保存在 Actions 的 `SWRT-build-diagnostics-<构建编号>` 附件中，保留 7 天。
 
 ## 项目结构
 
@@ -186,7 +206,7 @@ Docker 默认已集成。根分区为 1 GiB，部署容器前建议将 Docker �
 ├── sources.lock.json          # 源码与依赖版本记录
 ├── diy.sh                     # 编译前自定义命令
 ├── files/                     # 固件预置文件
-├── package/wlmb-server/        # 网络面板软件包定义
+├── package/                   # 网络面板、在线更新与电源管理
 ├── scripts/                   # 配置检查与镜像验证脚本
 ├── tests/                     # 构建集成测试
 └── docs/                      # 兼容性与发布说明
@@ -194,7 +214,7 @@ Docker 默认已集成。根分区为 1 GiB，部署容器前建议将 Docker �
 
 ## 已知问题与兼容性
 
-- **依赖与上游审查**：修复记录、证据和剩余验证范围见 [2026-10-22 检查报告](docs/AUDIT-2026-10-22.md)。
+- **依赖与上游审查**：当前限制见[兼容性说明](docs/COMPATIBILITY.md)；历史记录见 [2026-10-22 检查报告](docs/AUDIT-2026-10-22.md)。
 - **首页兼容性**：已修复 QuickStart 启动稍慢时，LuCI 缓存回退路由导致首页一直跳回状态页的问题。其他组件兼容性见 [兼容性说明](docs/COMPATIBILITY.md)，本次实机修复记录见 [检查记录](docs/REPAIR-2026-10-23.md)。
 - **固件更新**：本项目使用 iStore 首页与商店，系统仍基于 ImmortalWrt；固件更新请使用本仓库发布的版本，不使用 iStoreOS OTA 镜像。
 - **软件包兼容性**：系统使用 APK；其他固件的 IPK 或不同内核 ABI 的驱动不能直接混装。商店中的应用仍需核对设备兼容性。

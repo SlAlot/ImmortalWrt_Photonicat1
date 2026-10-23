@@ -1,0 +1,8 @@
+{
+  "admin/system/swrt-upgrade": {
+    "title": "SWRT 在线更新",
+    "order": 71,
+    "action": { "type": "view", "path": "system/swrt-upgrade" },
+    "depends": { "acl": [ "luci-app-swrt-upgrade" ] }
+  }
+}

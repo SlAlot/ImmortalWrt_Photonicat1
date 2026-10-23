@@ -19,6 +19,10 @@ class ImagePublicationTests(unittest.TestCase):
         self.target = self.root / "build/bin/targets/rockchip/armv8"
         self.target.mkdir(parents=True)
         (self.root / "build/swrt-metadata").mkdir()
+        identity = self.root / "build/files/etc/swrt-release.json"
+        identity.parent.mkdir(parents=True)
+        identity.write_text(json.dumps({"repository": "SlAlot/ImmortalWrt_Photonicat1",
+            "board": "ariaboard,photonicat", "version": "1.0"}))
         self.payload = bytearray(65 * 1024 * 1024)
         self.payload[510:512] = b"\x55\xaa"
         self.payload[0x8000:0x8004] = b"RKNS"
@@ -33,9 +37,12 @@ class ImagePublicationTests(unittest.TestCase):
             "ttyd", "luci-app-ttyd", "luci-i18n-ttyd-zh-cn", "curl", "luci-app-package-manager",
             "luci-app-diskman", "luci-i18n-diskman-zh-cn", "parted", "blkid",
             "smartmontools", "btrfs-progs", "kmod-fs-btrfs", "lsblk",
+            "luci-app-swrt-upgrade", "jq-full", "flock", "coreutils-sha256sum",
+            "coreutils-stat",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
-            "pcat-mgr", "luci-app-passwall", "luci-app-openclash",
+            "swrt-pcat-manager", "luci-app-swrt-power", "luci-mod-battstatus", "glib2", "jsonfilter",
+            "luci-app-passwall", "luci-app-openclash",
             "kmod-mt7921e", "kmod-mt7921u", "kmod-mt7921s",
             "kmod-mt7921-firmware", "kmod-mt7922-firmware", "kmod-mt792x-usb",
             "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
@@ -118,6 +125,13 @@ class ImagePublicationTests(unittest.TestCase):
     def test_second_route_manager_blocks_release(self):
         self.write_images()
         self.manifest.write_text(self.manifest.read_text() + "\nqmodem-uplink-manager - 1.0\n")
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Conflicting installed packages", result.stderr)
+
+    def test_second_mcu_owner_blocks_release(self):
+        self.write_images()
+        self.manifest.write_text(self.manifest.read_text() + "\npcat-mgr - 1.0\n")
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Conflicting installed packages", result.stderr)

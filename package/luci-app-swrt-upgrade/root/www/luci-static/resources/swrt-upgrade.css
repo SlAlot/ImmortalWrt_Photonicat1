@@ -1,0 +1,23 @@
+/* Layout additions only; colors, cards and buttons come from wlmb-server/panel.css. */
+#swrt-upgrade{max-width:1180px;margin:0 auto;padding:12px 0}
+#swrt-upgrade .np-page-title{margin:0;padding:0;background:none;border:0;box-shadow:none;border-radius:0;height:auto;line-height:1.3;text-shadow:none}
+#swrt-upgrade .swrt-upgrade-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:18px}
+#swrt-upgrade .np-native-card{margin-bottom:18px;border-radius:12px}
+#swrt-upgrade .np-native-card-body{display:grid;gap:18px}
+#swrt-upgrade .swrt-upgrade-grid>.np-native-card{height:100%;margin:0}
+#swrt-upgrade .swrt-upgrade-grid{margin-bottom:18px}
+#swrt-upgrade .swrt-file{display:grid;gap:12px;padding-top:16px;border-top:1px solid var(--np-line)}
+#swrt-upgrade .swrt-file span,#swrt-upgrade code{overflow-wrap:anywhere;white-space:normal}
+#swrt-upgrade code{font-size:11px;background:var(--np-soft);color:var(--np-muted);padding:8px;border-radius:8px}
+#swrt-upgrade label{display:flex;align-items:center;gap:8px;color:var(--np-text);cursor:pointer;line-height:1.7}
+#swrt-upgrade input[type=checkbox]{width:17px;height:17px;accent-color:var(--np-accent);margin:0;flex-shrink:0}
+#swrt-upgrade progress{width:100%;height:9px;accent-color:var(--np-accent)}
+#swrt-upgrade [data-phase=failed]{color:var(--np-danger)}
+#swrt-upgrade [data-phase=ready]{color:var(--np-green)}
+#swrt-upgrade .swrt-release-notes{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;font:inherit;font-size:13px;line-height:1.8;border:0;padding:0;margin:0;background:none;color:var(--np-muted)}
+.swrt-confirm-backup{display:block;margin:20px 0;line-height:1.8}
+.swrt-upgrade-confirm .swrt-confirm-file{overflow-wrap:anywhere}
+.swrt-upgrade-confirm p{margin-bottom:14px;line-height:1.7}
+.swrt-upgrade-confirm .np-actions{margin-top:18px}
+.swrt-upgrade-confirm h4{box-shadow:none;border-radius:0}
+@media(max-width:760px){#swrt-upgrade .swrt-upgrade-grid{grid-template-columns:minmax(0,1fr)}#swrt-upgrade .np-page-title{font-size:24px}#swrt-upgrade .np-actions>.np-btn{flex:1;min-width:0}#swrt-upgrade .np-native-card-head,#swrt-upgrade .np-native-card-body{padding:14px}#swrt-upgrade .np-chip{display:none}}

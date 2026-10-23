@@ -22,11 +22,14 @@ required = [
     "PACKAGE_luci-app-diskman", "PACKAGE_luci-i18n-diskman-zh-cn",
     "PACKAGE_parted", "PACKAGE_blkid", "PACKAGE_smartmontools",
     "PACKAGE_btrfs-progs", "PACKAGE_kmod-fs-btrfs", "PACKAGE_lsblk",
+    "PACKAGE_luci-app-swrt-upgrade", "PACKAGE_jq-full", "PACKAGE_flock", "PACKAGE_coreutils-sha256sum",
+    "PACKAGE_coreutils-stat",
     "PACKAGE_curl", "PACKAGE_luci-app-package-manager",
     "PACKAGE_luci-compat", "PACKAGE_luci-lua-runtime", "PACKAGE_luci-lib-ipkg",
     "PACKAGE_tar", "PACKAGE_xz-utils", "PACKAGE_xz",
     "PACKAGE_docker", "PACKAGE_dockerd", "PACKAGE_luci-app-dockerman",
-    "PACKAGE_pcat-mgr", "PACKAGE_u-boot-photonicat-rk3568",
+    "PACKAGE_swrt-pcat-manager", "PACKAGE_luci-app-swrt-power", "PACKAGE_glib2", "PACKAGE_jsonfilter",
+    "PACKAGE_u-boot-photonicat-rk3568",
     "PACKAGE_kmod-ath10k-sdio", "PACKAGE_kmod-ath11k-pci",
     "PACKAGE_kmod-mt7921e", "PACKAGE_kmod-mt7921u", "PACKAGE_kmod-mt7921s",
     "PACKAGE_kmod-mt7921-firmware", "PACKAGE_kmod-mt7922-firmware",
@@ -43,6 +46,7 @@ required = [
     "TARGET_ROOTFS_EXT4FS", "TARGET_ROOTFS_SQUASHFS",
 ]
 forbidden = [
+    "PACKAGE_pcat-mgr", "PACKAGE_pcat-manager",
     "FEED_video", "FEED_istore", "FEED_nas", "FEED_nas_luci", "FEED_qmodem",
     "PACKAGE_luci-app-modemband", "PACKAGE_modemband",
     "PACKAGE_luci-app-sms-tool-js", "PACKAGE_luci-app-qmodem",
