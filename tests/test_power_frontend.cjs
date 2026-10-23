@@ -42,6 +42,9 @@ function harness(readonly = false) {
 (async () => {
     const h = harness();
     assert.equal(h.calls.length, 0, 'Opening the page never changes policy');
+    assert.equal(h.button('保存电源策略').disabled, true, 'Save is enabled only after editing');
+    assert.ok(walk(h.root).filter(n => n.tag === 'details').every(n => !Object.hasOwn(n.attrs, 'open')),
+        'Detailed electrical readings stay collapsed by default');
     assert.equal(h.input('电源模式').value, 'manual');
     h.change('电源模式', 'daily');
     h.change('每日开机时间', '08:35');

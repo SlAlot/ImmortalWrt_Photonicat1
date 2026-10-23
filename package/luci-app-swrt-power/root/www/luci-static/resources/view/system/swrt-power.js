@@ -24,7 +24,9 @@ return view.extend({
         var voltage = E('strong', {}, '—'), supply = E('strong', {}, '—'), temperature = E('strong', {}, '—');
         var active = E('strong', {}, '读取中'), details = E('p', { 'class': 'np-desc' });
         var message = E('p', { 'class': 'np-hint', role: 'status', 'aria-live': 'polite' });
+        var customChoice = E('option', { value: 'custom', disabled: '', hidden: '' }, '当前自定义计划');
         var mode = E('select', { 'class': 'np-input', 'aria-label': '电源模式' }, [
+            customChoice,
             E('option', { value: 'manual' }, '手动模式'),
             E('option', { value: 'ups' }, '车载 / UPS 模式'),
             E('option', { value: 'daily' }, '每日定时模式')
@@ -33,20 +35,22 @@ return view.extend({
         var start = E('input', { type: 'time', 'class': 'np-input', value: '07:00', 'aria-label': '每日开机时间' });
         var stop = E('input', { type: 'time', 'class': 'np-input', value: '23:00', 'aria-label': '每日关机时间' });
         var save = E('button', { type: 'button', 'class': 'np-btn primary', disabled: '' }, '保存电源策略');
-        var refresh = E('button', { type: 'button', 'class': 'np-btn' }, '刷新状态');
+        var refresh = E('button', { type: 'button', 'class': 'np-btn', hidden: '' }, '取消修改');
         function field(label, node) { return E('div', { 'class': 'np-info-field' }, [ E('span', { 'class': 'np-info-label' }, label), node ]); }
-        var upsBox = E('div', { 'class': 'swrt-power-settings' }, [ field('断开外部供电后延时关机（分钟）', delay),
-            E('p', { 'class': 'np-hint' }, '1～600 分钟。启用时需接入外部电源；再次恢复供电后取消本次倒计时。') ]);
-        var dailyBox = E('div', { 'class': 'swrt-power-times' }, [ field('每天开机', start), field('每天关机', stop) ]);
+        var upsBox = E('div', { 'class': 'swrt-power-settings' }, [ field('断电后多久关机（分钟）', delay),
+            E('p', { 'class': 'np-hint' }, '接通外部电源后启用；恢复供电即取消倒计时。') ]);
+        var dailyBox = E('div', { 'class': 'swrt-power-times' }, [ field('开机时间', start), field('关机时间', stop) ]);
         function selection() {
             upsBox.hidden = mode.value !== 'ups';
             dailyBox.hidden = mode.value !== 'daily';
         }
         function buttons() {
             var valid = latest && latest.ok === true;
-            save.disabled = !writable || !valid || saving || reading ||
+            save.disabled = !writable || !valid || !editing || saving || reading ||
                 (editing && editRevision !== latest.revision);
             refresh.disabled = reading || saving;
+            refresh.hidden = valid && !editing;
+            refresh.textContent = !valid || (editing && editRevision !== latest.revision) ? '重新读取' : '取消修改';
             [mode, delay, start, stop].forEach(function(node) { node.disabled = !writable || saving; });
         }
         function timeOf(row) { return String(row.hour).padStart(2, '0') + ':' + String(row.minute).padStart(2, '0'); }
@@ -78,7 +82,7 @@ return view.extend({
             supply.textContent = (battery.supply_mv / 1000).toFixed(2) + ' V';
             temperature.textContent = battery.temperature + ' °C';
             var current = plan(data);
-            active.textContent = { manual: '手动模式', ups: '车载 / UPS 模式', daily: '每日定时模式', custom: '自定义计划' }[current];
+            active.textContent = '当前：' + { manual: '手动模式', ups: '车载 / UPS 模式', daily: '每日定时模式', custom: '自定义计划' }[current];
             if (current === 'ups') {
                 details.textContent = battery.charging ? '正在监测外部供电，断电后延时 ' + Math.ceil(data.car.timeout / 60) + ' 分钟关机。' :
                     (data.car.armed && data.car.countdown >= 0 ? '电池供电中，约 ' + data.car.countdown + ' 秒后关机。' : '等待接入外部电源后开始监测。');
@@ -89,7 +93,8 @@ return view.extend({
             if (!editing || reset) {
                 editing = false;
                 editRevision = data.revision;
-                mode.value = current === 'custom' ? 'manual' : current;
+                customChoice.hidden = current !== 'custom';
+                mode.value = current;
                 if (current === 'ups') delay.value = Math.ceil(data.car.timeout / 60);
                 if (current === 'daily') {
                     start.value = timeOf(data.events.find(function(row) { return row.action === 1; }));
@@ -98,7 +103,7 @@ return view.extend({
                 selection();
             }
             message.textContent = editing && editRevision !== data.revision ? '策略已在其他位置变化，请刷新后重新编辑。' :
-                '更新于 ' + new Date().toLocaleTimeString() + ' · 每 10 秒刷新状态';
+                new Date().toLocaleTimeString() + ' 已更新';
             buttons();
         }
         function fetchStatus(reset) {
@@ -145,26 +150,24 @@ return view.extend({
             var description = selected === 'manual' ? '关闭车载 / UPS 与定时计划，恢复手动模式。' : selected === 'ups' ?
                 '断开外部供电后延时 ' + minutes + ' 分钟关机；恢复外部供电后取消倒计时。' : '每日 ' + on + ' 开机，' + off + ' 关机，按设备本地时间执行。';
             ui.showModal('确认电源策略', [ E('p', {}, description),
-                E('p', {}, '新策略会替换原有车载和定时计划。自动关机将中断设备供网。'),
+                E('p', {}, '新策略会替换原有计划。自动关机会中断供网，首次测试请确认可重新接入设备。'),
                 E('label', { 'class': 'swrt-power-confirm' }, [ acknowledged, ' 我已确认设置，并了解设备可能自动关机。' ]),
                 E('div', { 'class': 'right' }, [ E('button', { type: 'button', 'class': 'btn', click: ui.hideModal }, '取消'), ' ', confirm ])
             ]);
         });
-        function card(title, children) { return E('section', { 'class': 'np-native-card' }, [
-            E('div', { 'class': 'np-native-card-head' }, E('strong', {}, title)), E('div', { 'class': 'np-native-card-body' }, children) ]); }
+        function card(title, children, badge) { return E('section', { 'class': 'np-native-card' }, [
+            E('div', { 'class': 'np-native-card-head' }, [ E('strong', {}, title), badge || '' ]), E('div', { 'class': 'np-native-card-body' }, children) ]); }
         var root = E('div', { id: 'swrt-power', 'class': 'np-root' }, [
             E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css?v=1.1.3') }),
             E('link', { rel: 'stylesheet', href: L.resource('swrt-power.css?v=1.0.0') }),
             E('div', { 'class': 'np-page-heading' }, [ E('div', {}, [ E('h2', { 'class': 'np-page-title' }, '光影猫一代管理'),
                 E('p', { 'class': 'np-page-description' }, '电池状态与自动开关机') ]), E('span', { 'class': 'np-chip' }, '电源控制 · 实验性') ]),
             card('电池与供电', [ E('div', { 'class': 'swrt-power-hero' }, [ percent, source ]), meter,
-                E('div', { 'class': 'swrt-power-metrics' }, [ field('电池电压', voltage), field('外部电压', supply), field('主板温度', temperature) ]) ]),
-            E('div', { 'class': 'swrt-power-grid' }, [
-                card('当前策略', [ active, details, message, E('div', { 'class': 'np-actions' }, [ refresh ]) ]),
-                card('电源设置', [ field('运行模式', mode), upsBox, dailyBox,
-                    E('p', { 'class': 'np-hint' }, '首次测试请保持外部电源连接，并确认可重新接入设备。'),
-                    E('div', { 'class': 'np-actions' }, [ save ]) ])
-            ]),
+                E('details', { 'class': 'swrt-power-more' }, [ E('summary', {}, '电池详情'),
+                    E('div', { 'class': 'swrt-power-metrics' }, [ field('电池电压', voltage), field('外部电压', supply), field('主板温度', temperature) ]) ]) ]),
+            card('电源模式', [ details, field('选择模式', mode), upsBox, dailyBox,
+                E('div', { 'class': 'np-actions' }, [ save, refresh ]), message ],
+                E('span', { 'class': 'np-chip' }, active)),
             E('p', { 'class': 'np-footer' }, 'SWRT · SlAlot')
         ]);
         selection(); update(initial, true);

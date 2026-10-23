@@ -267,7 +267,7 @@ static bool apply(struct json_object *input, struct snapshot *before) {
     bool restored_ok = disabled && restored_events && restored_car && snapshot(&restored) &&
                        !strcmp(before->revision, restored.revision);
     clear_snapshot(&restored);
-    message(restored_ok ? "保存失败，原有策略已恢复" : "保存未完成且未能确认恢复，请立即检查当前策略");
+    message(restored_ok ? "保存失败，原有配置已恢复，请重新确认运行状态" : "保存未完成且未能确认恢复，请立即检查当前策略");
     return false;
 }
 int main(int argc, char **argv) {
