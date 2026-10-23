@@ -134,7 +134,9 @@ class PowerClientTests(unittest.TestCase):
                     self.fail_once = None
                 elif name == "pmu-status": response.update(self.pmu)
                 elif name == "charger-on-auto-start-get": response.update(self.car)
-                elif name == "schedule-power-event-get": response["event-list"] = self.events
+                elif name == "schedule-power-event-get":
+                    response["event-list"] = self.events
+                    response["timezone"] = "UTC"
                 elif name == "charger-on-auto-start-set":
                     self.car.update(state=request["state"], timeout=request["timeout"])
                 elif name == "schedule-power-event-set": self.events = request["event-list"]
@@ -198,6 +200,14 @@ class PowerClientTests(unittest.TestCase):
         self.pmu["on-battery"] = 1
         self.pmu["charger-voltage"] = 0
         self.assertFalse(self.call("configure", data)["ok"])
+        self.assertEqual(self.writes(), [])
+
+    def test_changed_timezone_blocks_daily_policy_without_writes(self):
+        (self.root / "etc").mkdir()
+        (self.root / "etc/TZ").write_text("CST-8\n")
+        result = self.call("configure", self.request(mode="daily"))
+        self.assertFalse(result["ok"])
+        self.assertIn("时区", result["message"])
         self.assertEqual(self.writes(), [])
 
     def test_daily_schedule_uses_official_event_fields_and_roundtrips(self):

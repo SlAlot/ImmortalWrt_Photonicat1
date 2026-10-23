@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <time.h>
 #include <unistd.h>
 
 static char error_message[256];
@@ -228,6 +229,17 @@ static bool apply(struct json_object *input, struct snapshot *before) {
     }
     if (ups && !json_object_get_boolean(field(before->battery, "charging"))) {
         message("启用 UPS 模式前，请先接入外部电源"); return false;
+    }
+    if (daily) {
+        char *tz_path = path("/etc/TZ"), *timezone = NULL;
+        if (!g_file_get_contents(tz_path, &timezone, NULL, NULL)) timezone = g_strdup("UTC");
+        g_free(tz_path);
+        struct json_object *daemon_timezone = field(before->schedule, "timezone");
+        bool consistent = daemon_timezone && json_object_is_type(daemon_timezone, json_type_string) &&
+            !strcmp(g_strstrip(timezone), json_object_get_string(daemon_timezone));
+        g_free(timezone);
+        if (!consistent) { message("设备时区已修改，请重启设备后设置定时计划"); return false; }
+        if (time(NULL) < 1700000000) { message("系统时间尚未正确同步，请先校准时间"); return false; }
     }
     struct json_object *events = json_object_new_array();
     if (daily) {

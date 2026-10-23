@@ -46,6 +46,10 @@ def profile(root):
     controller = replace(controller, '    child = json_object_new_int(countdown);',
                          '    json_object_object_add(rroot, "armed", json_object_new_boolean(swrt_pmu_ups_armed()));\n'
                          '    child = json_object_new_int(countdown);')
+    controller = replace(controller, '    json_object_object_add(rroot, "event-list", array);',
+                         '    json_object_object_add(rroot, "event-list", array);\n'
+                         '    json_object_object_add(rroot, "timezone", json_object_new_string('\
+                         'g_getenv("TZ") != NULL ? g_getenv("TZ") : "UTC"));')
     (root / "src/controller.c").write_text(controller)
 
     pmu = (root / "src/pmu-manager.c").read_text()
