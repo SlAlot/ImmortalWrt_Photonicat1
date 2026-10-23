@@ -13,4 +13,6 @@
 #swrt-power .swrt-power-times{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 #swrt-power input,#swrt-power select{width:100%}
 .swrt-power-confirm{display:block;margin:18px 0;line-height:1.8}
+.swrt-power-dialog p{margin-bottom:14px;line-height:1.7}
+.swrt-power-dialog .np-actions{margin-top:18px}
 @media(max-width:760px){#swrt-power .np-page-title{font-size:23px}#swrt-power .np-page-heading{flex-wrap:wrap}#swrt-power .np-native-card-head,#swrt-power .np-native-card-body{padding:14px}#swrt-power .swrt-power-metrics strong{font-size:18px}#swrt-power .np-actions>.np-btn{flex:1}}

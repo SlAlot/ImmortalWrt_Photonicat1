@@ -58,7 +58,9 @@ return view.extend({
             if (data.car.state === 1) return 'ups';
             if (!data.events.length) return 'manual';
             if (data.events.length === 2 && data.events.every(function(row) {
-                return row.enabled === 1 && row['enable-bits'] === 56 && row['dow-bits'] === 127;
+                return row && row.enabled === 1 && row['enable-bits'] === 56 && row['dow-bits'] === 127 &&
+                    Number.isInteger(row.hour) && row.hour >= 0 && row.hour <= 23 &&
+                    Number.isInteger(row.minute) && row.minute >= 0 && row.minute <= 59;
             }) && data.events.filter(function(row) { return row.action === 1; }).length === 1 &&
                 data.events.filter(function(row) { return row.action === 0; }).length === 1) return 'daily';
             return 'custom';
@@ -69,6 +71,8 @@ return view.extend({
                 percent.textContent = voltage.textContent = supply.textContent = temperature.textContent = '—';
                 meter.value = 0;
                 source.textContent = '状态不可用';
+                active.textContent = '当前：未确认';
+                details.textContent = '连接恢复后重新读取当前策略。';
                 message.textContent = data && data.message || '电源状态读取失败，请稍后重试';
                 buttons();
                 return;
@@ -134,7 +138,7 @@ return view.extend({
                 ui.addNotification(null, E('p', {}, '请输入不同的有效开机和关机时间。')); return;
             }
             var acknowledged = E('input', { type: 'checkbox' });
-            var confirm = E('button', { type: 'button', 'class': 'btn cbi-button-action important', disabled: '' }, '确认保存');
+            var confirm = E('button', { type: 'button', 'class': 'np-btn primary', disabled: '' }, '确认保存');
             acknowledged.addEventListener('change', function() { confirm.disabled = !acknowledged.checked; });
             confirm.addEventListener('click', function() {
                 if (!acknowledged.checked || saving || reading) return;
@@ -152,14 +156,14 @@ return view.extend({
             ui.showModal('确认电源策略', [ E('p', {}, description),
                 E('p', {}, '新策略会替换原有计划。自动关机会中断供网，首次测试请确认可重新接入设备。'),
                 E('label', { 'class': 'swrt-power-confirm' }, [ acknowledged, ' 我已确认设置，并了解设备可能自动关机。' ]),
-                E('div', { 'class': 'right' }, [ E('button', { type: 'button', 'class': 'btn', click: ui.hideModal }, '取消'), ' ', confirm ])
-            ]);
+                E('div', { 'class': 'np-actions right' }, [ E('button', { type: 'button', 'class': 'np-btn', click: ui.hideModal }, '取消'), confirm ])
+            ], 'np-root', 'np-dialog', 'swrt-power-dialog');
         });
         function card(title, children, badge) { return E('section', { 'class': 'np-native-card' }, [
             E('div', { 'class': 'np-native-card-head' }, [ E('strong', {}, title), badge || '' ]), E('div', { 'class': 'np-native-card-body' }, children) ]); }
         var root = E('div', { id: 'swrt-power', 'class': 'np-root' }, [
             E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css?v=1.1.3') }),
-            E('link', { rel: 'stylesheet', href: L.resource('swrt-power.css?v=1.0.0') }),
+            E('link', { rel: 'stylesheet', href: L.resource('swrt-power.css?v=1.0.1') }),
             E('div', { 'class': 'np-page-heading' }, [ E('div', {}, [ E('h2', { 'class': 'np-page-title' }, '光影猫一代管理'),
                 E('p', { 'class': 'np-page-description' }, '电池状态与自动开关机') ]), E('span', { 'class': 'np-chip' }, '电源控制 · 实验性') ]),
             card('电池与供电', [ E('div', { 'class': 'swrt-power-hero' }, [ percent, source ]), meter,

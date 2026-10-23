@@ -16,4 +16,7 @@
 #swrt-upgrade [data-phase=ready]{color:var(--np-green)}
 #swrt-upgrade .swrt-release-notes{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;font:inherit;font-size:13px;line-height:1.8;border:0;padding:0;margin:0;background:none;color:var(--np-muted)}
 .swrt-confirm-backup{display:block;margin:20px 0;line-height:1.8}
+.swrt-upgrade-confirm .swrt-confirm-file{overflow-wrap:anywhere}
+.swrt-upgrade-confirm p{margin-bottom:14px;line-height:1.7}
+.swrt-upgrade-confirm .np-actions{margin-top:18px}
 @media(max-width:760px){#swrt-upgrade .swrt-upgrade-grid{grid-template-columns:minmax(0,1fr)}#swrt-upgrade .np-page-title{font-size:24px}#swrt-upgrade .np-actions>.np-btn{flex:1;min-width:0}#swrt-upgrade .np-native-card-head,#swrt-upgrade .np-native-card-body{padding:14px}#swrt-upgrade .np-chip{display:none}}

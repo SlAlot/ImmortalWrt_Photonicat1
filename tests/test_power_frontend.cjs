@@ -60,6 +60,12 @@ function harness(readonly = false) {
     invalid.data = { ok: false, message: '电源状态已过期' };
     await invalid.polls[0]();
     assert.equal(invalid.button('保存电源策略').disabled, true);
+    assert.ok(walk(invalid.root).some(n => n.textContent === '当前：未确认'), 'Do not display stale policy as current');
+
+    const malformed = harness();
+    malformed.data.events = [null, { action: 0, enabled: 1 }];
+    await malformed.polls[0]();
+    assert.equal(malformed.input('电源模式').value, 'custom', 'Unrecognized saved plans must not break rendering');
 
     const save = harness();
     save.change('电源模式', 'ups');

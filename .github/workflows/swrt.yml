@@ -1,6 +1,11 @@
 name: Build SWRT Photonicat1
 on:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: '指定版本（例如 1.5）；留空自动递增，必须高于已有发布'
+        required: false
+        type: string
   push:
     branches: [main]
     paths: ['.config', 'feeds.conf.default', 'sources.lock.json', 'diy.sh', 'files/**', 'package/**', 'scripts/**', 'tests/**', '.github/workflows/**']
@@ -88,9 +93,10 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.release_version }}
         run: |
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > release-history.json
-          version=$(python3 scripts/release-version.py release-history.json)
+          version=$(python3 scripts/release-version.py release-history.json "$REQUESTED_VERSION")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           python3 scripts/stamp-firmware.py openwrt "$version" "$GITHUB_SHA"
       - name: Download all sources

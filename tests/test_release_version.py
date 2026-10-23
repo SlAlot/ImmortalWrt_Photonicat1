@@ -20,3 +20,12 @@ class ReleaseVersionTests(unittest.TestCase):
 
     def test_regular_increment(self):
         self.assertEqual(release_version.next_version([{"tag_name": "v1.0"}]), "1.1")
+
+    def test_explicit_release_version(self):
+        self.assertEqual(release_version.next_version([{"tag_name": "v1.3"}], "1.5"), "1.5")
+        self.assertEqual(release_version.next_version([{"tag_name": "v1.9"}], "2.0"), "2.0")
+
+    def test_explicit_version_must_be_valid_and_newer_including_drafts(self):
+        for version in ("1.3", "1.2", "v1.5", "1.10", "01.5", "0.5", "1.5\n"):
+            with self.subTest(version=version), self.assertRaises(ValueError):
+                release_version.next_version([{"tag_name": "v1.3", "draft": True}], version)

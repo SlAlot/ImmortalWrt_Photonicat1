@@ -7,6 +7,7 @@
 - 新增 DiskMan 中文磁盘管理，含分区、SMART 与 Btrfs 等文件系统工具，入口：系统 → 磁盘管理。
 - 新增“系统 → SWRT 在线更新”，从本仓库正式 Release 下载对应类型的固件，校验通过后手动确认升级；默认不保留配置。
 - 新增“系统 → 光影猫一代管理”，提供电池详情、车载 / UPS 延时关机及每日定时开关机（实验性），默认手动模式。
+- 两个新页面适配手机与桌面、深浅色显示，确认弹窗使用网络面板样式；修复服务暂不可用时的页面恢复和旧状态提示。
 - 保留无线、USB 驱动、PassWall、OpenClash、MWAN3 等原有功能，包含 MT7921/MT7922 驱动与固件。
 - 主机名 `S-Photonicat1`，网关 `192.168.17.1`，终端 Banner `SWRT`。
 - 修复 QuickStart 首页启动路由与静态资源缓存，加入蓝白 Logo 的网络面板磁贴，保留手机端左右滑动。
@@ -19,6 +20,8 @@
 - `sha256sums`：固件 SHA-256 校验清单。
 
 选择一种镜像即可；GitHub 自动显示的 “Source code” 是源码，不能用于刷机。配置、软件包清单、验证报告与日志请到对应 [Actions 构建](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml) 下载诊断附件（保留 7 天）。
+
+从未集成 SWRT 在线更新的旧版本升级：进入 **系统 → 备份 / 升级**，上传与当前系统类型相同的 `.img.gz`，推荐不保留配置。此次安装后才能使用新的在线更新入口。
 
 **USB 线刷必须先将 `.img.gz` 解压为 `.img`，整盘写入地址为 `0x00000000`，不要直接刷 `.gz`。** 使用光影猫一代对应的 Loader，操作见[官方刷机教程](https://photonicat.com/wiki/Photonicat_刷机操作手册)。
 

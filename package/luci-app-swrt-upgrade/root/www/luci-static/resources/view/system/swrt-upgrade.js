@@ -14,7 +14,9 @@ return view.extend({
     handleSaveApply: null,
     handleReset: null,
 
-    load: function() { return statusCall(); },
+    load: function() {
+        return statusCall().catch(function() { return { ok: false, message: '在线更新服务暂不可用' }; });
+    },
 
     render: function(initial) {
         var writable = L.hasViewPermission();
@@ -66,7 +68,7 @@ return view.extend({
             keep.disabled = !writable || pending || busy;
             backupButton.disabled = !writable || busy;
             progress.hidden = state.phase !== 'downloading';
-            var percent = release.size ? Math.min(100, 100 * data.downloaded_bytes / release.size) : 0;
+            var percent = release.size ? Math.min(100, 100 * Math.max(0, Number(data.downloaded_bytes) || 0) / release.size) : 0;
             progress.value = percent;
             progressText.textContent = state.phase === 'downloading' ? bytes(data.downloaded_bytes) + ' / ' + bytes(release.size) + ' · ' + Math.floor(percent) + '%' : '';
             if (state.phase === 'failed') installRequested = false;
@@ -75,6 +77,7 @@ return view.extend({
         function statusUnavailable(err) {
             latest = null;
             checkButton.disabled = downloadButton.disabled = installButton.disabled = true;
+            keep.disabled = backupButton.disabled = true;
             statusFailures++;
             if (installRequested) {
                 message.textContent = '设备连接暂时中断，正在等待升级和重启，请勿断电。';
@@ -114,7 +117,7 @@ return view.extend({
             if (!latest || !latest.eligible || latest.state.phase !== 'ready' || pending) return;
             var release = latest.release, preserve = keep.checked;
             var acknowledged = E('input', { type: 'checkbox' });
-            var confirm = E('button', { type: 'button', 'class': 'btn cbi-button-negative important', disabled: '' }, '开始刷写并重启');
+            var confirm = E('button', { type: 'button', 'class': 'np-btn danger', disabled: '' }, '开始刷写并重启');
             acknowledged.addEventListener('change', function() { confirm.disabled = !acknowledged.checked; });
             confirm.addEventListener('click', function() {
                 if (!acknowledged.checked) return;
@@ -124,14 +127,14 @@ return view.extend({
                 perform(function() { return installCall(preserve ? 1 : 0, release.sha256); });
             });
             ui.showModal('确认更新至 v' + release.version, [
-                E('p', {}, release.name),
+                E('p', { 'class': 'swrt-confirm-file' }, release.name),
                 E('p', {}, preserve ? '保留当前配置。旧配置可能覆盖新版默认设置。' : '不保留配置。完成后通过 192.168.17.1 重新设置密码、Wi-Fi 和拨号。'),
                 E('p', {}, '刷写会中断网络，请勿断电。额外安装的软件包和容器数据需另行备份。'),
                 E('label', { 'class': 'swrt-confirm-backup' }, [ acknowledged, ' 我已保存需要的配置和数据，确认现在升级。' ]),
-                E('div', { 'class': 'right' }, [
-                    E('button', { type: 'button', 'class': 'btn', click: ui.hideModal }, '取消'), ' ', confirm
+                E('div', { 'class': 'np-actions right' }, [
+                    E('button', { type: 'button', 'class': 'np-btn', click: ui.hideModal }, '取消'), confirm
                 ])
-            ]);
+            ], 'np-root', 'np-dialog', 'swrt-upgrade-confirm');
         });
         function field(label, value) {
             return E('div', { 'class': 'np-info-field' }, [ E('span', { 'class': 'np-info-label' }, label), value ]);
@@ -144,7 +147,7 @@ return view.extend({
         }
         root = E('div', { id: 'swrt-upgrade', 'class': 'np-root' }, [
             E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css?v=1.1.3') }),
-            E('link', { rel: 'stylesheet', href: L.resource('swrt-upgrade.css?v=1.0.0') }),
+            E('link', { rel: 'stylesheet', href: L.resource('swrt-upgrade.css?v=1.0.1') }),
             E('div', { 'class': 'np-page-heading' }, [
                 E('div', {}, [ E('h2', { 'class': 'np-page-title' }, 'SWRT 在线更新'),
                     E('p', { 'class': 'np-page-description' }, '光影猫一代 · 从 SlAlot 的 GitHub 正式发布获取固件') ]),
@@ -170,7 +173,8 @@ return view.extend({
             E('p', { 'class': 'np-footer' }, 'SWRT · SlAlot')
         ]);
         keep.checked = false;
-        update(initial);
+        if (initial && initial.ok === true) update(initial);
+        else statusUnavailable(new Error(initial && initial.message || '在线更新服务暂不可用'));
         poll.add(function() {
             if (polling || pending || !document.getElementById('swrt-upgrade')) return Promise.resolve();
             polling = true;

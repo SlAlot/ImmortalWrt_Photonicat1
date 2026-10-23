@@ -6,7 +6,7 @@ import re
 import sys
 
 
-def next_version(history):
+def next_version(history, requested=None):
     # gh api --paginate --slurp returns a list of pages; a single page also works.
     releases = [release for page in history for release in
                 (page if isinstance(page, list) else [page])]
@@ -15,9 +15,17 @@ def next_version(history):
         match = re.fullmatch(r"v([1-9][0-9]*)\.([0-9])", release.get("tag_name", ""))
         if match:
             numbers.append(int(match[1]) * 10 + int(match[2]))
+    if requested:
+        match = re.fullmatch(r"([1-9][0-9]*)\.([0-9])", requested)
+        if not match:
+            raise ValueError("Requested version must have the form 1.5 (one minor digit)")
+        if int(match[1]) * 10 + int(match[2]) <= max(numbers):
+            raise ValueError("Requested version must be newer than every existing release")
+        return requested
     major, minor = divmod(max(numbers) + 1, 10)
     return f"{major}.{minor}"
 
 
 if __name__ == "__main__":
-    print(next_version(json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))))
+    print(next_version(json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")),
+                       sys.argv[2] if len(sys.argv) > 2 else None))

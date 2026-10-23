@@ -100,6 +100,16 @@ const flush = async () => { await new Promise(resolve => setImmediate(resolve));
     await offline.polls[0]();
     assert.equal(offline.button('确认升级').disabled, true, 'An unavailable status must disable stale flash action');
 
+    const initialFailure = harness('ready');
+    initialFailure.statusOffline = true;
+    const unavailable = await initialFailure.view.load();
+    assert.equal(unavailable.ok, false, 'Initial RPC failure must still render a recoverable page');
+    initialFailure.root = initialFailure.view.render(unavailable);
+    assert.equal(initialFailure.button('确认升级').disabled, true);
+    initialFailure.statusOffline = false;
+    await initialFailure.polls.at(-1)();
+    assert.equal(initialFailure.button('确认升级').disabled, false, 'Polling recovers after service returns');
+
     const restarting = harness('installing');
     restarting.statusOffline = true;
     await restarting.polls[0]();
