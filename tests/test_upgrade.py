@@ -212,6 +212,17 @@ fi
         self.assertEqual(self.wait_worker()["phase"], "failed")
         self.assertFalse(self.log.exists())
 
+    def test_duplicate_checksum_entries_and_network_errors_fail_closed(self):
+        self.assert_ok("check")
+        checksums = self.fixture / "sha256sums"
+        checksums.write_text(checksums.read_text() * 2)
+        self.assert_ok("download")
+        self.assertEqual(self.wait_worker()["phase"], "failed")
+        self.assertFalse(self.log.exists())
+        (self.root / "network-fail").touch()
+        self.assertNotEqual(self.run_engine("check").returncode, 0)
+        self.assertEqual(self.assert_ok("status")["state"]["phase"], "failed")
+
     def test_tampering_after_ready_is_rechecked_before_flash(self):
         self.prepare()
         (self.worker / "firmware.img.gz").write_bytes(b"x" * len(self.image))

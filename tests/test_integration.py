@@ -38,6 +38,7 @@ class ImagePublicationTests(unittest.TestCase):
             "luci-app-diskman", "luci-i18n-diskman-zh-cn", "parted", "blkid",
             "smartmontools", "btrfs-progs", "kmod-fs-btrfs", "lsblk",
             "luci-app-swrt-upgrade", "jq-full", "flock", "coreutils-sha256sum",
+            "coreutils-stat",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "pcat-mgr", "luci-app-passwall", "luci-app-openclash",

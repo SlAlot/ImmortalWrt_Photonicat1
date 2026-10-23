@@ -38,7 +38,7 @@ function harness(phase = 'available', readonly = false) {
         view: { extend: obj => obj },
         rpc: { declare: spec => (...args) => {
             h.calls.push([spec.method, args]);
-            if (spec.method === 'status') return Promise.resolve(h.state);
+            if (spec.method === 'status') return h.statusOffline ? Promise.reject(new Error('network offline')) : Promise.resolve(h.state);
             if (spec.method === 'check' && h.error) return Promise.resolve({ ok: false, message: h.error });
             if (spec.method === 'download') h.state.state.phase = 'downloading';
             if (spec.method === 'install') h.state.state.phase = 'preparing';
@@ -95,6 +95,16 @@ const flush = async () => { await new Promise(resolve => setImmediate(resolve));
     const stale = harness('current');
     assert.equal(stale.button('下载并校验').disabled, true);
     assert.equal(stale.button('确认升级').disabled, true);
+    const offline = harness('ready');
+    offline.statusOffline = true;
+    await offline.polls[0]();
+    assert.equal(offline.button('确认升级').disabled, true, 'An unavailable status must disable stale flash action');
+
+    const restarting = harness('installing');
+    restarting.statusOffline = true;
+    await restarting.polls[0]();
+    await restarting.polls[0]();
+    assert.equal(restarting.modal.attrs.title, '等待设备重新连接');
 
     const read = harness('ready', true);
     for (const text of ['检查更新', '下载并校验', '确认升级', '下载配置备份'])

@@ -189,6 +189,7 @@ case "$MODE" in
         fetch "$(jq -r '.checksum_url' "$RELEASE")" "$DIR/sha256sums" || fail '无法获取 SHA256 校验清单'
         name="$(jq -r '.name' "$RELEASE")"
         sha="$(awk -v name="$name" 'NF == 2 && $2 == name {print $1}' "$DIR/sha256sums")"
+        [ "${#sha}" = 64 ] || fail '校验清单缺少唯一的固件摘要'
         printf '%s\n' "$sha" | grep -Eq '^[0-9a-fA-F]{64}$' || fail '校验清单缺少唯一、有效的固件摘要'
         sha="$(printf '%s' "$sha" | tr 'A-F' 'a-f')"
         digest="$(jq -r '.digest' "$RELEASE")"

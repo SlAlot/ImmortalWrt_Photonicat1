@@ -13,13 +13,14 @@ define Package/luci-app-swrt-upgrade
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=SWRT verified online firmware upgrade
-  DEPENDS:=@TARGET_rockchip_armv8 +luci-base +rpcd +wlmb-server +curl +ca-bundle +jq-full +flock +coreutils-sha256sum
+  DEPENDS:=@TARGET_rockchip_armv8 +luci-base +rpcd +wlmb-server +curl +ca-bundle +jq-full +flock +coreutils-sha256sum +coreutils-stat
 endef
 
 define Build/Compile
 endef
 
 define Package/luci-app-swrt-upgrade/install
+	$(INSTALL_DIR) $(1)
 	$(CP) ./root/. $(1)/
 	chmod 755 $(1)/usr/libexec/swrt-upgrade $(1)/usr/libexec/rpcd/luci.swrt_upgrade
 endef

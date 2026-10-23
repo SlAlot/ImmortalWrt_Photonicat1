@@ -19,7 +19,7 @@ return view.extend({
     render: function(initial) {
         var writable = L.hasViewPermission();
         var latest = null, pending = false, polling = false, reconnecting = false;
-        var installRequested = false, lastPhase = '';
+        var installRequested = false, statusFailures = 0;
         var current = E('strong', {}, '—'), available = E('strong', {}, '—');
         var filesystem = E('strong', {}, '—'), size = E('strong', {}, '—');
         var filename = E('span', {}, '检查后显示匹配的固件');
@@ -48,7 +48,8 @@ return view.extend({
             accept(data);
             latest = data;
             var state = data.state || {}, release = data.release || {};
-            lastPhase = state.phase;
+            statusFailures = 0;
+            if (state.phase === 'installing') installRequested = true;
             var busy = [ 'checking', 'downloading', 'verifying', 'preparing', 'installing' ].indexOf(state.phase) !== -1;
             current.textContent = data.current ? 'v' + data.current : '需要手动安装支持在线更新的固件';
             available.textContent = release.version ? 'v' + release.version : '待检查';
@@ -71,11 +72,31 @@ return view.extend({
             if (state.phase === 'failed') installRequested = false;
         }
         function refresh() { return statusCall().then(update); }
+        function statusUnavailable(err) {
+            latest = null;
+            checkButton.disabled = downloadButton.disabled = installButton.disabled = true;
+            statusFailures++;
+            if (installRequested) {
+                message.textContent = '设备连接暂时中断，正在等待升级和重启，请勿断电。';
+                if (statusFailures >= 2 && !reconnecting) {
+                    reconnecting = true;
+                    ui.showModal('等待设备重新连接', [ E('p', { 'class': 'spinning' }, '升级请求已提交，设备连接已中断。请勿断电，正在等待重新连接。') ]);
+                    ui.awaitReconnect(window.location.host, '192.168.17.1');
+                }
+            } else {
+                message.textContent = '暂时无法获取任务状态：' + String(err.message || err);
+            }
+        }
         function perform(call) {
             if (pending) return Promise.resolve();
             pending = true;
             if (latest) update(latest);
-            return call().then(accept).then(refresh).catch(notifyError).finally(function() {
+            return call().then(accept).then(function() { return refresh().catch(statusUnavailable); })
+                .catch(function(err) {
+                    installRequested = false;
+                    notifyError(err);
+                    return refresh().catch(statusUnavailable);
+                }).finally(function() {
                 pending = false;
                 if (latest) update(latest);
             });
@@ -153,16 +174,7 @@ return view.extend({
         poll.add(function() {
             if (polling || pending || !document.getElementById('swrt-upgrade')) return Promise.resolve();
             polling = true;
-            return refresh().catch(function(err) {
-                if (installRequested && lastPhase === 'installing' && !reconnecting) {
-                    reconnecting = true;
-                    ui.showModal('设备正在升级', [ E('p', { 'class': 'spinning' }, '连接已中断，等待刷写和重启，请勿断电。') ]);
-                    if (keep.checked) ui.awaitReconnect(window.location.host);
-                    else ui.awaitReconnect('192.168.17.1');
-                } else {
-                    message.textContent = '暂时无法获取任务状态：' + String(err.message || err);
-                }
-            }).finally(function() { polling = false; });
+            return refresh().catch(statusUnavailable).finally(function() { polling = false; });
         }, 2);
         return root;
     }
