@@ -22,6 +22,7 @@ required = [
     "PACKAGE_luci-app-diskman", "PACKAGE_luci-i18n-diskman-zh-cn",
     "PACKAGE_parted", "PACKAGE_blkid", "PACKAGE_smartmontools",
     "PACKAGE_btrfs-progs", "PACKAGE_kmod-fs-btrfs", "PACKAGE_lsblk",
+    "PACKAGE_luci-app-swrt-upgrade", "PACKAGE_jq-full", "PACKAGE_flock", "PACKAGE_coreutils-sha256sum",
     "PACKAGE_curl", "PACKAGE_luci-app-package-manager",
     "PACKAGE_luci-compat", "PACKAGE_luci-lua-runtime", "PACKAGE_luci-lib-ipkg",
     "PACKAGE_tar", "PACKAGE_xz-utils", "PACKAGE_xz",

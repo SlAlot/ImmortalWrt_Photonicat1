@@ -1,0 +1,11 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-only
+case "$1" in
+    list) printf '%s\n' '{"status":{},"check":{},"download":{},"install":{"keep":"int","sha256":"str"}}' ;;
+    call)
+        case "$2" in
+            status|check|download|install) /usr/libexec/swrt-upgrade "$2"; exit 0 ;;
+            *) printf '%s\n' '{"ok":false,"message":"不支持的操作"}' ;;
+        esac
+        ;;
+esac

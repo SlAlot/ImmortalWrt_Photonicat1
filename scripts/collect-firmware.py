@@ -29,6 +29,7 @@ required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "ttyd", "luci-app-ttyd", "luci-i18n-ttyd-zh-cn", "curl", "luci-app-package-manager",
             "luci-app-diskman", "luci-i18n-diskman-zh-cn", "parted", "blkid",
             "smartmontools", "btrfs-progs", "kmod-fs-btrfs", "lsblk",
+            "luci-app-swrt-upgrade", "jq-full", "flock", "coreutils-sha256sum",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "pcat-mgr", "luci-app-passwall", "luci-app-openclash",
@@ -43,6 +44,12 @@ forbidden = {"luci-app-modemband", "modemband", "luci-app-sms-tool-js",
              "qmodem-uplink-manager", "luci-app-qmodem-uplink",
              "iptables-zz-legacy", "ip6tables-zz-legacy"}
 assert not forbidden & packages, f"Conflicting installed packages: {forbidden & packages}"
+identity_path = build / "files/etc/swrt-release.json"
+identity = json.loads(identity_path.read_text(encoding="utf-8"))
+assert identity["repository"] == "SlAlot/ImmortalWrt_Photonicat1"
+assert identity["board"] == "ariaboard,photonicat"
+assert identity["version"] == version, "Embedded firmware version differs from release"
+shutil.copy2(identity_path, audit / "firmware-identity.json")
 
 verified = []
 for info in profile["images"]:

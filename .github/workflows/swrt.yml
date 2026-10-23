@@ -22,7 +22,7 @@ jobs:
       - name: Check scripts and integration invariants
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck lua5.1
+          sudo apt-get install -y shellcheck lua5.1 jq
           bash -n scripts/prepare.sh diy.sh
           shellcheck scripts/prepare.sh diy.sh
           shellcheck -s sh -e SC1091 files/etc/uci-defaults/99-swrt files/etc/hotplug.d/iface/95-swrt-qmodem-mwan
@@ -30,6 +30,9 @@ jobs:
           shellcheck -s sh files/usr/libexec/swrt-apk-status
           sh -n files/usr/share/qmodem/swrt-scan-once
           shellcheck -s sh files/usr/share/qmodem/swrt-scan-once
+          sh -n package/luci-app-swrt-upgrade/root/usr/libexec/swrt-upgrade
+          shellcheck -s sh package/luci-app-swrt-upgrade/root/usr/libexec/swrt-upgrade package/luci-app-swrt-upgrade/root/usr/libexec/rpcd/luci.swrt_upgrade
+          node tests/test_upgrade_frontend.cjs
           python3 -m unittest discover -s tests -v
           git diff --check
   build:
@@ -76,6 +79,15 @@ jobs:
           set -euo pipefail
           bash scripts/prepare.sh "$GITHUB_WORKSPACE/openwrt" 2>&1 | tee prepare.log
           test -s openwrt/swrt-metadata/config.resolved
+      - name: Choose release version and stamp firmware identity
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > release-history.json
+          version=$(python3 scripts/release-version.py release-history.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          python3 scripts/stamp-firmware.py openwrt "$version" "$GITHUB_SHA"
       - name: Download all sources
         working-directory: openwrt
         run: |
@@ -93,14 +105,10 @@ jobs:
           fi
           python3 ../scripts/check-config.py .config
       - name: Verify and collect firmware
-        id: release
         env:
-          GH_TOKEN: ${{ github.token }}
+          FIRMWARE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > release-history.json
-          version=$(python3 scripts/release-version.py release-history.json)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          python3 scripts/collect-firmware.py openwrt firmware-release "$version"
+          python3 scripts/collect-firmware.py openwrt firmware-release "$FIRMWARE_VERSION"
       - name: Save firmware
         uses: actions/upload-artifact@v4
         with:

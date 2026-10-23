@@ -19,6 +19,10 @@ class ImagePublicationTests(unittest.TestCase):
         self.target = self.root / "build/bin/targets/rockchip/armv8"
         self.target.mkdir(parents=True)
         (self.root / "build/swrt-metadata").mkdir()
+        identity = self.root / "build/files/etc/swrt-release.json"
+        identity.parent.mkdir(parents=True)
+        identity.write_text(json.dumps({"repository": "SlAlot/ImmortalWrt_Photonicat1",
+            "board": "ariaboard,photonicat", "version": "1.0"}))
         self.payload = bytearray(65 * 1024 * 1024)
         self.payload[510:512] = b"\x55\xaa"
         self.payload[0x8000:0x8004] = b"RKNS"
@@ -33,6 +37,7 @@ class ImagePublicationTests(unittest.TestCase):
             "ttyd", "luci-app-ttyd", "luci-i18n-ttyd-zh-cn", "curl", "luci-app-package-manager",
             "luci-app-diskman", "luci-i18n-diskman-zh-cn", "parted", "blkid",
             "smartmontools", "btrfs-progs", "kmod-fs-btrfs", "lsblk",
+            "luci-app-swrt-upgrade", "jq-full", "flock", "coreutils-sha256sum",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "pcat-mgr", "luci-app-passwall", "luci-app-openclash",
