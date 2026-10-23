@@ -121,7 +121,7 @@ check_image() {
     [ "$name" = "immortalwrt-photonicat-1-$FS-sysupgrade-$version.img.gz" ] || fail '文件系统或固件名称不匹配'
     newer "$version" || fail '该固件不是更新版本，已阻止回刷'
     expected="$(jq -er '.sha256 | select(test("^[0-9a-f]{64}$"))' "$RELEASE")" || fail '缺少有效校验值'
-    [ -f "$IMAGE" ] && [ ! -L "$IMAGE" ] || fail '固件文件不存在'
+    if [ ! -f "$IMAGE" ] || [ -L "$IMAGE" ]; then fail '固件文件不存在'; fi
     [ "$(stat -c %s "$IMAGE")" = "$(jq -r '.size' "$RELEASE")" ] || fail '固件大小不一致'
     actual="$(sha256sum "$IMAGE")"
     [ "${actual%% *}" = "$expected" ] || fail '固件 SHA256 校验失败'
