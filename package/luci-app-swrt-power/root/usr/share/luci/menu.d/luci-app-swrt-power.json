@@ -1,6 +1,6 @@
 {
   "admin/system/swrt-power": {
-    "title": "光影猫一代管理",
+    "title": "光影猫管理",
     "order": 54,
     "action": { "type": "view", "path": "system/swrt-power" },
     "depends": { "acl": [ "luci-app-swrt-power" ] }

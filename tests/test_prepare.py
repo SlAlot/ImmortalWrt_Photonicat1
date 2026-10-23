@@ -65,6 +65,7 @@ class PreparePipelineTests(unittest.TestCase):
         fixtures = {
             "target/linux/rockchip/image/armv8.mk": "define Device/ariaboard_photonicat\n  DEVICE_PACKAGES := pcat-mgr\nendef\n",
             "feeds/luci/modules/luci-mod-battstatus/root/usr/libexec/rpcd/luci.battstatus": "\tariaboard,photonicat)\n\t\techo 'Need pcat-mgr'\n\t\t;;\n",
+            "feeds/luci/modules/luci-mod-battstatus/htdocs/luci-static/resources/preload/battstatus.js": "ui.showIndicator(info.name, info.status, null, info.state);\nif (typeof info.color != 'undefined') {\n  info.element.innerHTML = 'placeholder';\n}\n",
             "feeds/luci/applications/luci-app-weechat/Makefile": "LUCI_DEPENDS:=+weechat \n",
             "feeds/qmodem/application/qmodem/Makefile": "PCIe_DRIVER:kmod-mhi-wwan \n",
             "package/kernel/linux/modules/netdevices.mk": "define KernelPackage/mhi-net\nendef\n",
@@ -123,6 +124,10 @@ echo '# configuration written to .config'
         resolved = self.build / "swrt-metadata/config.resolved"
         self.assertEqual(resolved.read_text(), (self.repo / ".config").read_text())
         self.assertIn("Validated", result.stdout)
+        self.assertEqual((self.build / "files/www/luci-static/resources/swrt-ui.css").read_bytes(),
+                         (self.repo / "files/www/luci-static/resources/swrt-ui.css").read_bytes())
+        menu = self.build / "package/swrt/luci-app-swrt-power/root/www/luci-static/resources/preload/swrt-menu.js"
+        self.assertTrue(menu.is_file(), "The menu migration must be copied into the firmware package")
 
     def test_recursive_dependency_is_fatal_even_when_make_returns_zero(self):
         result = self.run_prepare("cycle")

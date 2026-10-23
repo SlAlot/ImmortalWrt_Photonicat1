@@ -24,7 +24,10 @@ function harness(readonly = false) {
     const context = {
         view: { extend: value => value }, E: (tag, attrs, children) => new Element(tag, attrs, children),
         rpc: { declare: spec => (...args) => { h.calls.push([spec.method, args]); return Promise.resolve(h.data); } },
-        L: { hasViewPermission: () => !readonly, resource: value => '/resources/' + value },
+        L: { hasViewPermission: () => !readonly, resource: value => {
+            assert.match(value, /^[a-zA-Z0-9_.%/,-]+$/, 'L.resource takes a path, not a path containing query parameters');
+            return '/resources/' + value;
+        } },
         ui: { addNotification: (...args) => h.notices.push(args),
             showModal: (title, children) => { h.modal = new Element('modal', { title }, children); },
             hideModal: () => { h.modal = null; } },
@@ -41,10 +44,13 @@ function harness(readonly = false) {
 }
 (async () => {
     const h = harness();
+    assert.deepEqual(walk(h.root).filter(n => n.tag === 'link').map(n => n.attrs.href), [
+        '/resources/wlmb-server/panel.css?v=1.1.3', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-power.css?v=1.0.5'
+    ]);
     assert.equal(h.calls.length, 0, 'Opening the page never changes policy');
     assert.equal(h.button('保存电源策略').disabled, true, 'Save is enabled only after editing');
-    assert.ok(walk(h.root).filter(n => n.tag === 'details').every(n => !Object.hasOwn(n.attrs, 'open')),
-        'Detailed electrical readings stay collapsed by default');
+    assert.ok(walk(h.root).filter(n => n.tag === 'details').every(n => Object.hasOwn(n.attrs, 'open')),
+        'Battery details are expanded by default');
     assert.equal(h.input('电源模式').value, 'manual');
     h.change('电源模式', 'daily');
     h.change('每日开机时间', '08:35');

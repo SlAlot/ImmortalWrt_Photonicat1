@@ -51,7 +51,10 @@ function harness(phase = 'available', readonly = false) {
             return Promise.resolve({ ok: true });
         }, getSessionID: () => 'fixture-session' },
         E: (tag, attrs, children) => new Element(tag, attrs, children),
-        L: { hasViewPermission: () => !readonly, resource: s => '/resources/' + s,
+        L: { hasViewPermission: () => !readonly, resource: s => {
+            assert.match(s, /^[a-zA-Z0-9_.%/,-]+$/, 'L.resource takes a path, not a path containing query parameters');
+            return '/resources/' + s;
+        },
             url: s => '/cgi-bin/luci/' + s, env: { cgi_base: '/cgi-bin' } },
         ui: { addNotification: (...args) => h.notices.push(args),
             showModal: (title, children) => { h.modal = new Element('modal', { title }, children); },
@@ -70,6 +73,13 @@ const flush = async () => { await new Promise(resolve => setImmediate(resolve));
 
 (async () => {
     const available = harness();
+    assert.deepEqual(walk(available.root).filter(n => n.tag === 'link').map(n => n.attrs.href), [
+        '/resources/wlmb-server/panel.css?v=1.1.3', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-upgrade.css?v=1.0.4'
+    ]);
+    const restore = walk(available.root).find(n => n.tag === 'a' && n.textContent === '恢复配置备份');
+    assert.equal(restore.attrs.href, '/cgi-bin/luci/admin/system/flash', 'Restore uses the native upload and restore workflow');
+    assert.ok(walk(available.root).filter(n => n.tag === 'details').every(n => Object.hasOwn(n.attrs, 'open')),
+        'Firmware details and release notes are expanded by default');
     assert.equal(available.calls.length, 0, 'Rendering must not download or flash');
     assert.equal(available.keep.checked, false, 'Fresh install is the default');
     assert.equal(available.button('确认升级').disabled, true);

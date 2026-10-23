@@ -68,6 +68,7 @@ return view.extend({
             keep.disabled = !writable || pending || busy;
             backupButton.disabled = !writable || busy;
             progress.hidden = state.phase !== 'downloading';
+            progressText.hidden = state.phase !== 'downloading';
             var percent = release.size ? Math.min(100, 100 * Math.max(0, Number(data.downloaded_bytes) || 0) / release.size) : 0;
             progress.value = percent;
             progressText.textContent = state.phase === 'downloading' ? bytes(data.downloaded_bytes) + ' / ' + bytes(release.size) + ' · ' + Math.floor(percent) + '%' : '';
@@ -144,37 +145,43 @@ return view.extend({
         function field(label, value) {
             return E('div', { 'class': 'np-info-field' }, [ E('span', { 'class': 'np-info-label' }, label), value ]);
         }
-        function card(title, content) {
-            return E('section', { 'class': 'np-native-card' }, [
+        function card(title, content, extraClass) {
+            return E('section', { 'class': 'np-native-card' + (extraClass ? ' ' + extraClass : '') }, [
                 E('div', { 'class': 'np-native-card-head' }, E('strong', {}, title)),
                 E('div', { 'class': 'np-native-card-body' }, content)
             ]);
         }
-        root = E('div', { id: 'swrt-upgrade', 'class': 'np-root' }, [
-            E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css?v=1.1.3') }),
-            E('link', { rel: 'stylesheet', href: L.resource('swrt-upgrade.css?v=1.0.1') }),
+        root = E('div', { id: 'swrt-upgrade', 'class': 'np-root swrt-page' }, [
+            E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css') + '?v=1.1.3' }),
+            E('link', { rel: 'stylesheet', href: L.resource('swrt-ui.css') + '?v=1.0.4' }),
+            E('link', { rel: 'stylesheet', href: L.resource('swrt-upgrade.css') + '?v=1.0.4' }),
             E('div', { 'class': 'np-page-heading' }, [
                 E('div', {}, [ E('h2', { 'class': 'np-page-title' }, 'SWRT 在线更新'),
                     E('p', { 'class': 'np-page-description' }, '光影猫一代 · 从 SlAlot 的 GitHub 正式发布获取固件') ]),
                 E('span', { 'class': 'np-chip' }, 'Photonicat 1')
             ]),
-            E('div', { 'class': 'swrt-upgrade-grid' }, [
+            E('div', { 'class': 'swrt-workspace' }, [
+            E('div', { 'class': 'swrt-main-grid' }, [
                 card('固件版本', [
                     E('div', { 'class': 'np-info-grid' }, [ field('当前版本', current), field('最新正式版', available), field('系统类型', filesystem), field('固件大小', size) ]),
-                    E('div', { 'class': 'swrt-file' }, [ field('匹配固件', filename), field('SHA256', digest) ]),
                     E('div', { 'class': 'np-actions' }, [ checkButton, downloadButton ])
                 ]),
                 card('升级准备', [
-                    E('p', { 'class': 'np-desc' }, '先下载配置备份。下载固件不会自动刷写，全部校验通过后再确认升级。'),
                     E('div', { 'class': 'np-actions swrt-backup' }, [ backupButton,
-                        E('a', { href: L.url('admin/system/flash') }, '手动备份与升级') ]),
-                    E('label', { 'class': 'swrt-keep' }, [ keep, ' 保留当前配置（默认关闭）' ]),
-                    E('p', { 'class': 'np-hint' }, '推荐不保留配置，以应用新版默认设置。在线更新保持当前 SquashFS / ext4 类型。'),
-                    E('div', { 'class': 'np-actions' }, [ installButton ])
+                        E('a', { 'class': 'np-btn', href: L.url('admin/system/flash') }, '恢复配置备份') ]),
+                    E('div', { 'class': 'swrt-keep-group' }, [
+                        E('label', { 'class': 'swrt-keep' }, [ keep, E('span', {}, '保留当前配置（默认关闭）') ]),
+                        E('p', { 'class': 'np-hint' }, '推荐关闭，以应用新版默认设置。') ]),
+                    E('div', { 'class': 'np-actions' }, [ installButton,
+                        E('a', { href: L.url('admin/system/flash') }, '手动上传固件') ])
                 ])
             ]),
-            card('任务状态', [ message, progress, progressText ]),
-            card('发布说明', [ notes, releaseLink ]),
+            E('div', { 'class': 'swrt-status-strip' }, [ E('span', { 'class': 'swrt-status-label' }, '任务状态'), message, progress, progressText ]),
+            E('details', { 'class': 'swrt-details', open: '' }, [ E('summary', {}, '固件文件与校验信息'),
+                E('div', { 'class': 'swrt-file swrt-details-content' }, [ field('匹配固件', filename), field('SHA256', digest) ]) ]),
+            E('details', { 'class': 'swrt-details', open: '' }, [ E('summary', {}, '发布说明'),
+                E('div', { 'class': 'swrt-details-content' }, [ notes, releaseLink ]) ])
+            ]),
             E('p', { 'class': 'np-footer' }, 'SWRT · SlAlot')
         ]);
         keep.checked = false;
