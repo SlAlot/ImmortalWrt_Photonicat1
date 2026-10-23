@@ -41,7 +41,13 @@ function harness(phase = 'available', readonly = false) {
             if (spec.method === 'status') return h.statusOffline ? Promise.reject(new Error('network offline')) : Promise.resolve(h.state);
             if (spec.method === 'check' && h.error) return Promise.resolve({ ok: false, message: h.error });
             if (spec.method === 'download') h.state.state.phase = 'downloading';
-            if (spec.method === 'install') h.state.state.phase = 'preparing';
+            if (spec.method === 'install') {
+                h.state.state.phase = 'preparing';
+                if (h.installResponseLost) {
+                    h.statusOffline = true;
+                    return Promise.reject(new Error('Upgrade response lost'));
+                }
+            }
             return Promise.resolve({ ok: true });
         }, getSessionID: () => 'fixture-session' },
         E: (tag, attrs, children) => new Element(tag, attrs, children),
@@ -115,6 +121,23 @@ const flush = async () => { await new Promise(resolve => setImmediate(resolve));
     await restarting.polls[0]();
     await restarting.polls[0]();
     assert.equal(restarting.modal.attrs.title, '等待设备重新连接');
+
+    const lostReply = harness('ready');
+    lostReply.installResponseLost = true;
+    lostReply.button('确认升级').fire('click');
+    const lostAck = walk(lostReply.modal).find(n => n.tag === 'input');
+    lostAck.checked = true; lostAck.fire('change');
+    walk(lostReply.modal).find(n => n.tag === 'button' && n.textContent === '开始刷写并重启').fire('click');
+    await flush();
+    await lostReply.polls[0]();
+    assert.equal(lostReply.modal.attrs.title, '等待设备重新连接',
+        'Losing the install response does not prove that flashing failed');
+    assert.equal(lostReply.calls.filter(c => c[0] === 'install').length, 1, 'Never resend an ambiguous flash request');
+
+    const preparing = harness('preparing');
+    preparing.statusOffline = true;
+    await preparing.polls[0](); await preparing.polls[0]();
+    assert.equal(preparing.modal.attrs.title, '等待设备重新连接');
 
     const read = harness('ready', true);
     for (const text of ['检查更新', '下载并校验', '确认升级', '下载配置备份'])

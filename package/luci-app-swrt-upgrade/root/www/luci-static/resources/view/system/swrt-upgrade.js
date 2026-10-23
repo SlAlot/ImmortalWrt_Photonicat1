@@ -51,7 +51,7 @@ return view.extend({
             latest = data;
             var state = data.state || {}, release = data.release || {};
             statusFailures = 0;
-            if (state.phase === 'installing') installRequested = true;
+            if ([ 'preparing', 'installing' ].indexOf(state.phase) !== -1) installRequested = true;
             var busy = [ 'checking', 'downloading', 'verifying', 'preparing', 'installing' ].indexOf(state.phase) !== -1;
             current.textContent = data.current ? 'v' + data.current : '需要手动安装支持在线更新的固件';
             available.textContent = release.version ? 'v' + release.version : '待检查';
@@ -73,7 +73,13 @@ return view.extend({
             progressText.textContent = state.phase === 'downloading' ? bytes(data.downloaded_bytes) + ' / ' + bytes(release.size) + ' · ' + Math.floor(percent) + '%' : '';
             if (state.phase === 'failed') installRequested = false;
         }
-        function refresh() { return statusCall().then(update); }
+        function refresh() {
+            return statusCall().then(function(data) {
+                accept(data);
+                installRequested = [ 'preparing', 'installing' ].indexOf((data.state || {}).phase) !== -1;
+                update(data);
+            });
+        }
         function statusUnavailable(err) {
             latest = null;
             checkButton.disabled = downloadButton.disabled = installButton.disabled = true;
@@ -96,7 +102,6 @@ return view.extend({
             if (latest) update(latest);
             return call().then(accept).then(function() { return refresh().catch(statusUnavailable); })
                 .catch(function(err) {
-                    installRequested = false;
                     notifyError(err);
                     return refresh().catch(statusUnavailable);
                 }).finally(function() {
