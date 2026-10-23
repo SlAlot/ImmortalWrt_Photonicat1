@@ -31,6 +31,8 @@ class ImagePublicationTests(unittest.TestCase):
             "qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "qmodem-smsd", "sms-forwarder-next",
             "ttyd", "luci-app-ttyd", "luci-i18n-ttyd-zh-cn", "curl", "luci-app-package-manager",
+            "luci-app-diskman", "luci-i18n-diskman-zh-cn", "parted", "blkid",
+            "smartmontools", "btrfs-progs", "kmod-fs-btrfs", "lsblk",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "pcat-mgr", "luci-app-passwall", "luci-app-openclash",
@@ -93,6 +95,18 @@ class ImagePublicationTests(unittest.TestCase):
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Missing installed packages", result.stderr)
+
+    def test_missing_diskman_menu_dependency_blocks_release(self):
+        # DiskMan hides its entire menu when parted, blkid or smartctl is absent.
+        self.write_images()
+        original = self.manifest.read_text()
+        for name in ("parted", "blkid", "smartmontools"):
+            with self.subTest(package=name):
+                self.manifest.write_text(original.replace(name + " - 1.0", ""))
+                result = self.collect()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Missing installed packages", result.stderr)
+                self.assertIn(name, result.stderr)
 
     def test_legacy_qmodem_ui_blocks_release_with_next(self):
         self.write_images()

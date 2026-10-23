@@ -4,6 +4,7 @@
 
 - QModem Next + Tom AT / ubus + Tom 定制拨号组件。
 - SlAlot 网络面板、iStore QuickStart 首页、iStore 商店、Docker / Compose。
+- 新增 DiskMan 中文磁盘管理，含分区、SMART 与 Btrfs 等文件系统工具，入口：系统 → 磁盘管理。
 - 保留无线、USB 驱动、PassWall、OpenClash、MWAN3 等原有功能，包含 MT7921/MT7922 驱动与固件。
 - 主机名 `S-Photonicat1`，网关 `192.168.17.1`，终端 Banner `SWRT`。
 - 修复 QuickStart 首页启动路由与静态资源缓存，加入蓝白 Logo 的网络面板磁贴，保留手机端左右滑动。

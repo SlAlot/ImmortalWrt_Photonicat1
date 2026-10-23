@@ -27,6 +27,8 @@ packages = {line.split(" - ", 1)[0] for line in manifests[0].read_text().splitli
 required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "qmodem-smsd", "sms-forwarder-next",
             "ttyd", "luci-app-ttyd", "luci-i18n-ttyd-zh-cn", "curl", "luci-app-package-manager",
+            "luci-app-diskman", "luci-i18n-diskman-zh-cn", "parted", "blkid",
+            "smartmontools", "btrfs-progs", "kmod-fs-btrfs", "lsblk",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "pcat-mgr", "luci-app-passwall", "luci-app-openclash",

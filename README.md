@@ -29,6 +29,7 @@
 | 网络面板 | wlmb-server，提供独立 WebUI，并支持与 QModem 共享通道 |
 | 管理首页 | iStore QuickStart 首页，含网络面板磁贴与深浅色 Logo，保留 LuCI 状态概览入口 |
 | Web 终端 | ttyd，入口：系统 → 终端；LAN 端口 7681，使用系统账号登录 |
+| 磁盘管理 | DiskMan 中文界面，入口：系统 → 磁盘管理；含分区、文件系统与 SMART 工具 |
 | 应用商店 | iStore |
 | 容器 | Docker、Docker Compose 与 LuCI Docker 管理 |
 | 多 WAN | MWAN3，有线 WAN、Wi-Fi 中继与蜂窝链路故障切换 |
