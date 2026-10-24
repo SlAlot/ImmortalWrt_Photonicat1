@@ -19,7 +19,7 @@ function walk(node) { return node instanceof Element ? [node, ...node.children.f
 function harness(readonly = false) {
     const h = { calls: [], polls: [], modal: null, notices: [], root: null,
         data: { ok: true, revision: 'a'.repeat(64),
-            battery: { percentage: 74, battery_mv: 3960, supply_mv: 5000, charging: true, temperature: 42 },
+            battery: { percentage: 74, battery_mv: 3960, supply_mv: 5000, external_power: true, charging: null, temperature: 42 },
             car: { state: 0, timeout: 0, countdown: -1, armed: false }, events: [] } };
     const context = {
         view: { extend: value => value }, E: (tag, attrs, children) => new Element(tag, attrs, children),
@@ -52,6 +52,21 @@ function harness(readonly = false) {
     assert.ok(walk(h.root).filter(n => n.tag === 'details').every(n => Object.hasOwn(n.attrs, 'open')),
         'Battery details are expanded by default');
     assert.equal(h.input('电源模式').value, 'manual');
+    assert.ok(walk(h.root).some(n => n.textContent === '外部供电'));
+    assert.ok(!walk(h.root).some(n => n.textContent === '充电中'));
+    const voltage = harness();
+    for (const [mv, expected] of [
+        [4699, '输入电压低于 4.7V'], [4700, '输入电压未达官方建议的 4.9V'],
+        [4899, '输入电压未达官方建议的 4.9V'], [4900, '电量为电压估算；外部供电不代表正在充电']
+    ]) {
+        voltage.data.battery.supply_mv = mv;
+        await voltage.polls[0]();
+        assert.ok(walk(voltage.root).some(n => n.textContent.startsWith(expected)), 'Correct input voltage advisory at ' + mv);
+        assert.ok(!voltage.calls.some(call => call[0] === 'configure'), 'Voltage monitoring must not alter power policy');
+    }
+    voltage.data = { ok: false, message: '离线' };
+    await voltage.polls[0]();
+    assert.ok(walk(voltage.root).some(n => n.textContent === '暂无可用电源数据。'), 'Clear stale voltage advice');
     h.change('电源模式', 'daily');
     h.change('每日开机时间', '08:35');
     await h.polls[0]();
@@ -89,11 +104,13 @@ function harness(readonly = false) {
     assert.equal(call[1][4], 'a'.repeat(64)); assert.equal(call[1][5], 1);
 
     const batteryOnly = harness();
-    batteryOnly.data.battery.charging = false;
+    batteryOnly.data.battery.external_power = false;
+    await batteryOnly.polls[0]();
+    assert.ok(walk(batteryOnly.root).some(n => n.textContent === '电池供电'));
     batteryOnly.change('电源模式', 'ups');
     batteryOnly.button('保存电源策略').fire('click');
     assert.equal(batteryOnly.modal, null);
-    assert.equal(batteryOnly.calls.length, 0);
+    assert.ok(!batteryOnly.calls.some(call => call[0] === 'configure'));
     assert.ok(!source.includes('参考') && !source.includes('PEIT98'));
     console.log('Power UI: read-only status, edit preservation, conflict detection and explicit confirmation passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });

@@ -55,20 +55,54 @@ def profile(root):
     pmu = (root / "src/pmu-manager.c").read_text()
     if pmu.count("pcat_modem_manager_device_power_usage_get()") != 2:
         raise ValueError("Unexpected official PMU dependencies")
-    pmu = pmu.replace("pcat_modem_manager_device_power_usage_get()", "0")
+    pmu = pmu.replace("pcat_modem_manager_device_power_usage_get()", "swrt_modem_power_usage_get()")
     pmu = replace(pmu, "    guint last_battery_voltage;",
                   "    gint64 swrt_report_at;\n    gboolean swrt_ac_observed;\n"
                   "    guint last_battery_voltage;")
+    pmu = replace(pmu, "    charger_voltage = data[2] + ((guint16)data[3] << 8);",
+                  '''    charger_voltage = data[2] + ((guint16)data[3] << 8);
+    if(battery_voltage < 2500 || battery_voltage > 5000 || charger_voltage > 24000)
+    {
+        pmu_data->swrt_report_at = 0;
+        return;
+    }''')
+    # A reopened port must receive a new report before it can arm UPS shutdown.
+    pmu = replace(pmu, '''static void pcat_pmu_serial_close(PCatPMUManagerData *pmu_data)
+{''', '''static void pcat_pmu_serial_close(PCatPMUManagerData *pmu_data)
+{
+    pmu_data->swrt_report_at = 0;
+    pmu_data->swrt_ac_observed = FALSE;''')
     pmu = replace(pmu, "    pmu_data->last_charger_voltage = charger_voltage;",
                   "    pmu_data->swrt_report_at = g_get_monotonic_time();\n"
                   "    pmu_data->last_charger_voltage = charger_voltage;")
+    pmu = replace(pmu, "    on_battery = (charger_voltage < charge_detection_threshold);",
+                  '''    on_battery = (charger_voltage < charge_detection_threshold);
+    if(pmu_data->swrt_report_at == 0 || pmu_data->last_on_battery_state != on_battery)
+        g_message("SWRT power source=%s, battery=%u mV, input=%u mV",
+            on_battery ? "battery" : "external", battery_voltage, charger_voltage);''')
+    pmu = replace(pmu, '''                    case PCAT_PMU_MANAGER_COMMAND_PMU_REQUEST_SHUTDOWN:
+                    {
+                        pcat_main_request_shutdown(FALSE);''',
+                  '''                    case PCAT_PMU_MANAGER_COMMAND_PMU_REQUEST_SHUTDOWN:
+                    {
+                        g_message("SWRT MCU shutdown reason=%d, battery=%u mV, input=%u mV",
+                            extra_data_len > 0 ? (gint)extra_data[0] : -1,
+                            pmu_data->last_battery_voltage, pmu_data->last_charger_voltage);
+                        pcat_main_request_shutdown(FALSE);''')
     # A manually booted router must observe external power before UPS shutdown
     # is armed. All heartbeat/watchdog/serial framing remains upstream code.
+    pmu = replace(pmu, '''    if(pmu_data->last_charger_voltage >= charge_detection_threshold)''',
+                  '''    if(pmu_data->swrt_report_at != 0 &&
+       now - pmu_data->swrt_report_at < 15000000 &&
+       pmu_data->last_charger_voltage >= charge_detection_threshold)''')
     pmu = replace(pmu, '''            if((pmu_data->power_on_event==3 || pmu_data->power_on_event==4) &&
                now > pmu_data->charger_on_auto_start_last_timestamp +''',
-                  '''            if(pmu_data->last_charger_voltage >= charge_detection_threshold)
+                  '''            if(pmu_data->swrt_report_at != 0 &&
+               now - pmu_data->swrt_report_at < 15000000 &&
+               pmu_data->last_charger_voltage >= charge_detection_threshold)
                 pmu_data->swrt_ac_observed = TRUE;
             if(pmu_data->swrt_ac_observed &&
+               pmu_data->swrt_report_at != 0 &&
                now - pmu_data->swrt_report_at < 15000000 &&
                now > pmu_data->charger_on_auto_start_last_timestamp +''')
     pmu = replace(pmu, '''    pcat_pmu_manager_charger_on_auto_start_internal(&g_pcat_pmu_manager_data,
@@ -88,11 +122,11 @@ def profile(root):
     (root / "src/pmu-manager.c").write_text(prefix + getter + suffix +
         "\ngboolean swrt_pmu_ups_armed(void) { return g_pcat_pmu_manager_data.swrt_ac_observed; }\n")
     header = (root / "src/pmu-manager.h").read_text()
-    header = replace(header, "G_END_DECLS", "gboolean swrt_pmu_ups_armed(void);\n\nG_END_DECLS")
+    header = replace(header, "G_END_DECLS", "gboolean swrt_pmu_ups_armed(void);\n"
+                     "guint swrt_modem_power_usage_get(void);\n\nG_END_DECLS")
     (root / "src/pmu-manager.h").write_text(header)
     config = (root / "conf/pcat-manager.conf.sample").read_text()
     config = re.sub(r"^GPIO.*\n", "", config, flags=re.M)
-    config = replace(config, "AutoShutdownVoltage5G=3600", "AutoShutdownVoltage5G=0")
     (root / "conf/pcat-manager.conf.sample").write_text(config)
     (root / "meson.build").write_text("""project('swrt-pcat-manager', 'c')
 power_dependencies = [dependency('glib-2.0'), dependency('gio-2.0'),
@@ -100,7 +134,9 @@ power_dependencies = [dependency('glib-2.0'), dependency('gio-2.0'),
     dependency('json-c'), dependency('threads')]
 subdir('src')
 """)
-    (root / "src/meson.build").write_text("""executable('pcat-manager', ['main.c', 'pmu-manager.c', 'controller.c'],
+    (root / "src/swrt-modem-power-profile.c").write_bytes(
+        Path(__file__).with_name("modem-power-profile.c").read_bytes())
+    (root / "src/meson.build").write_text("""executable('pcat-manager', ['main.c', 'pmu-manager.c', 'controller.c', 'swrt-modem-power-profile.c'],
     dependencies: power_dependencies, install: true)
 executable('swrt-power-client', 'swrt-power-client.c',
     dependencies: power_dependencies, install: true)

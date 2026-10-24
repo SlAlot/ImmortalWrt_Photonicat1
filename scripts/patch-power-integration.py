@@ -9,6 +9,15 @@ def patch_indicator(text):
     # Existing sessions cache the preload list; also import from the known module.
     if "require preload.swrt-menu" not in text and text.count("'require ui';") == 1:
         text = text.replace("'require ui';", "'require ui';\n'require preload.swrt-menu as swrtMenu';", 1)
+    if "# SWRT power source label" not in text:
+        anchor = "ui.showIndicator(info.name, info.status,"
+        if text.count(anchor) != 1:
+            raise ValueError("Unexpected battery indicator; review supply status label")
+        text = text.replace(anchor, '''// # SWRT power source label
+                if (info.valid === true && typeof info.external_power === 'boolean') {
+                    info.status = (info.external_power ? '外部供电' : '电池供电') + ': ' + info.percentage + '%';
+                }
+                ''' + anchor, 1)
     if "# SWRT battery management link" in text:
         return text
     pattern = (r"ui\.showIndicator\(info\.name, info\.status, null, info\.state\);\s*"
@@ -57,10 +66,10 @@ def integrate(root):
     indicator.write_text(patch_indicator(indicator.read_text(encoding="utf-8")), encoding="utf-8")
     rpc = root / "feeds/luci/modules/luci-mod-battstatus/root/usr/libexec/rpcd/luci.battstatus"
     text = rpc.read_text(encoding="utf-8")
-    if "# SWRT PMU battery adapter" not in text:
+    if '# SWRT PMU battery adapter' not in text or 'json_add_boolean external_power "$external_power"' not in text:
         pattern = r"\t+ariaboard,photonicat\)\n.*?\t+;;"
         match = re.search(pattern, text, re.S)
-        if not match or "Need pcat-mgr" not in match.group():
+        if not match or not any(marker in match.group() for marker in ("Need pcat-mgr", "# SWRT PMU battery adapter")):
             raise ValueError("Unexpected battery RPC; review adapter")
         replacement = '''\t\t\t\t\tariaboard,photonicat)
                         # SWRT PMU battery adapter
@@ -68,9 +77,9 @@ def integrate(root):
                         valid="$(printf '%s' "$status" | jsonfilter -e '@.ok')"
                         if [ "$valid" = true ]; then
                             json_add_boolean valid 1
-                            charging="$(printf '%s' "$status" | jsonfilter -e '@.charging')"
-                            [ "$charging" = true ] && charging=1 || charging=0
-                            json_add_boolean charging "$charging"
+                            external_power="$(printf '%s' "$status" | jsonfilter -e '@.external_power')"
+                            [ "$external_power" = true ] && external_power=1 || external_power=0
+                            json_add_boolean external_power "$external_power"
                             json_add_int percentage "$(printf '%s' "$status" | jsonfilter -e '@.percentage')"
                         else
                             json_add_boolean valid 0

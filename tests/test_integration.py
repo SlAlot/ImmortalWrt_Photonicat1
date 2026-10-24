@@ -131,10 +131,14 @@ class ImagePublicationTests(unittest.TestCase):
 
     def test_second_mcu_owner_blocks_release(self):
         self.write_images()
-        self.manifest.write_text(self.manifest.read_text() + "\npcat-mgr - 1.0\n")
-        result = self.collect()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Conflicting installed packages", result.stderr)
+        original = self.manifest.read_text()
+        for name in ("pcat-mgr", "pcat-manager", "kmod-photonicat-pm"):
+            with self.subTest(package=name):
+                self.manifest.write_text(original + "\n" + name + " - 1.0\n")
+                result = self.collect()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Conflicting installed packages", result.stderr)
+                self.assertIn(name, result.stderr)
 
     def test_missing_wifi_firmware_blocks_release(self):
         self.write_images()

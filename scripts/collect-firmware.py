@@ -40,7 +40,7 @@ required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
             "docker-compose", "luci-app-dockerman", "modem_scan"}
 assert required <= packages, f"Missing installed packages: {required - packages}"
-forbidden = {"pcat-mgr", "pcat-manager", "luci-app-modemband", "modemband", "luci-app-sms-tool-js",
+forbidden = {"pcat-mgr", "pcat-manager", "kmod-photonicat-pm", "luci-app-modemband", "modemband", "luci-app-sms-tool-js",
              "luci-app-qmodem", "luci-app-qmodem-sms", "luci-app-qmodem-mwan",
              "luci-app-qmodem-ttl", "luci-app-qmodem-hc",
              "qmodem-uplink-manager", "luci-app-qmodem-uplink",

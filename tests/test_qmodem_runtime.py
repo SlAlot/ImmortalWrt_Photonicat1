@@ -62,7 +62,8 @@ if os.getenv('TEST_DISABLE_LATER')=='1':
 
     def scan(self, **env):
         return subprocess.run(["sh", str(self.helper), "usb"], env={**self.env, **env},
-                              capture_output=True, text=True, timeout=10)
+                              capture_output=True, text=True,
+                              timeout=float(os.environ.get("SWRT_TEST_PROCESS_TIMEOUT", "10")))
 
     def test_boot_scan_waits_for_daemon_then_queues_once(self):
         result = self.scan()

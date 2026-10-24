@@ -1,0 +1,21 @@
+#!/bin/sh
+# Docker's overlay snapshotter needs native storage, outside the root overlay.
+# Only change an unused upstream default; never move existing container data.
+current="$(uci -q get dockerd.globals.data_root)" || exit 0
+case "$current" in /opt/docker|/opt/docker/) ;; *) exit 0 ;; esac
+[ -z "$(uci -q get dockerd.globals.alt_config_file)" ] || exit 0
+pidof dockerd >/dev/null 2>&1 && exit 0
+awk '$2 == "/rom" && $3 == "squashfs" { found=1 } END { exit !found }' /proc/mounts || exit 0
+awk '$2 == "/overlay" && ($3 == "f2fs" || $3 == "ext4") { found=1 } END { exit !found }' /proc/mounts || exit 0
+[ ! -L /opt/docker ] && [ ! -L /overlay/docker ] || exit 0
+if [ -e /opt/docker ] && { [ ! -d /opt/docker ] || [ -n "$(find /opt/docker -mindepth 1 -maxdepth 1 -print -quit)" ]; }; then
+    logger -t swrt-docker 'Existing Docker data preserved; storage requires manual review'
+    exit 0
+fi
+# A pre-existing native destination also requires explicit data review.
+[ ! -e /overlay/docker ] || exit 0
+mkdir -m 700 /overlay/docker || exit 1
+uci set dockerd.globals.data_root='/overlay/docker' || exit 1
+uci commit dockerd || exit 1
+logger -t swrt-docker 'Selected native /overlay/docker for new Docker data'
+exit 0

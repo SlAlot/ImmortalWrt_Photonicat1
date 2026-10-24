@@ -53,6 +53,14 @@ class OfficialPowerProfileTests(unittest.TestCase):
             self.assertNotIn("pcat_modem_manager_", (source / "src/controller.c").read_text())
             self.assertNotIn("pcat_modem_manager_init()", (source / "src/main.c").read_text())
             self.assertEqual((source / "src/controller.c").read_text().count('.command = "'), 6)
+            config = (source / "conf/pcat-manager.conf.sample").read_text()
+            self.assertIn("AutoShutdownVoltage5G=3600", config)
+            self.assertIn("swrt_modem_power_usage_get()", (source / "src/pmu-manager.c").read_text())
+            pmu = (source / "src/pmu-manager.c").read_text()
+            self.assertIn('SWRT power source=%s, battery=%u mV, input=%u mV', pmu)
+            self.assertIn('SWRT MCU shutdown reason=%d', pmu)
+            self.assertIn('extra_data_len > 0 ? (gint)extra_data[0] : -1', pmu)
+            self.assertIn('pcat_main_request_shutdown(FALSE);', pmu)
 
     @unittest.skipIf(os.name == "nt", "Native official C build runs on Linux CI")
     def test_pinned_official_daemon_builds_without_modem_libraries(self):
@@ -62,6 +70,7 @@ class OfficialPowerProfileTests(unittest.TestCase):
                 "gio-unix-2.0", "gthread-2.0", "json-c"], text=True).split()
             result = subprocess.run(["cc", "-O2", "-Werror=implicit-function-declaration",
                 str(source / "src/main.c"), str(source / "src/pmu-manager.c"), str(source / "src/controller.c"),
+                str(source / "src/swrt-modem-power-profile.c"),
                 *flags, "-o", str(source / "power-daemon")], capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             # Compile only. NEVER start the daemon against a host UART.
@@ -71,6 +80,50 @@ class OfficialPowerProfileTests(unittest.TestCase):
         access = acl["luci-app-swrt-power"]
         self.assertEqual(access["read"], {"ubus": {"luci.swrt_power": ["status", "battery"]}})
         self.assertEqual(access["write"], {"ubus": {"luci.swrt_power": ["configure"]}})
+
+    @unittest.skipIf(os.name == "nt", "Official state machine executes on Linux")
+    def test_ups_state_machine_fails_closed_on_bad_or_stale_reports(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = profile_source(folder)
+            flags = subprocess.check_output(["pkg-config", "--cflags", "--libs", "glib-2.0"], text=True).split()
+            binary = source / "safety-test"
+            subprocess.run(["cc", "-O1", "-Werror=implicit-function-declaration",
+                "-I", str(source / "src"), str(ROOT / "tests/power_safety_harness.c"),
+                *flags, "-o", str(binary)], check=True, capture_output=True, text=True)
+            result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    @unittest.skipIf(os.name == "nt", "Native sysfs classifier runs on Linux CI")
+    def test_modem_profile_reads_enumeration_without_accessing_modem_controls(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            driver = root / "driver.c"
+            driver.write_text('#include <glib.h>\n#include <stdio.h>\n'
+                              'guint swrt_modem_power_usage_from(const gchar *);\n'
+                              'int main(int argc, char **argv) { if (argc != 2) return 2; '
+                              'printf("%u\\n", swrt_modem_power_usage_from(argv[1])); return 0; }\n')
+            binary = root / "profile"
+            flags = subprocess.check_output(["pkg-config", "--cflags", "--libs", "glib-2.0"], text=True).split()
+            subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", str(driver),
+                            str(SERVICE / "files/modem-power-profile.c"), *flags, "-o", str(binary)], check=True)
+            sysfs = root / "usb"
+            sysfs.mkdir()
+            def level():
+                return int(subprocess.check_output([str(binary), str(sysfs)], text=True))
+            def device(name, vendor, product):
+                node = sysfs / name
+                node.mkdir()
+                (node / "idVendor").write_text(vendor + "\n")
+                (node / "idProduct").write_text(product + "\n")
+            self.assertEqual(level(), 0)
+            device("4-1", "152d", "0580")
+            self.assertEqual(level(), 0, "A USB disk must not select a modem profile")
+            device("6-1", "2c7c", "0800")
+            self.assertEqual(level(), 1)
+            device("6-2", "2c7c", "0900")
+            self.assertEqual(level(), 2, "RM500U must select the official 5G voltage profile")
+            (sysfs / "6-2/idProduct").write_text("0900junk\n")
+            self.assertEqual(level(), 1, "Incomplete or malformed attributes must not match a profile")
 
 
 @unittest.skipIf(os.name == "nt", "Unix socket client integration runs on Linux CI")
@@ -172,7 +225,8 @@ class PowerClientTests(unittest.TestCase):
         status = self.call("status")
         self.assertTrue(status["ok"], status)
         self.assertEqual(status["battery"]["percentage"], 74)
-        self.assertTrue(status["battery"]["charging"])
+        self.assertTrue(status["battery"]["external_power"])
+        self.assertIsNone(status["battery"]["charging"], "Supply presence cannot establish charging")
         self.assertEqual(len(status["revision"]), 64)
         self.assertEqual(self.writes(), [])
 
@@ -201,6 +255,14 @@ class PowerClientTests(unittest.TestCase):
         self.pmu["charger-voltage"] = 0
         self.assertFalse(self.call("configure", data)["ok"])
         self.assertEqual(self.writes(), [])
+
+    def test_battery_only_does_not_claim_a_charge_current_measurement(self):
+        self.pmu["on-battery"] = 1
+        self.pmu["charger-voltage"] = 0
+        status = self.call("battery")
+        self.assertTrue(status["ok"], status)
+        self.assertFalse(status["external_power"])
+        self.assertIsNone(status["charging"])
 
     def test_changed_timezone_blocks_daily_policy_without_writes(self):
         (self.root / "etc").mkdir()

@@ -137,7 +137,9 @@ static struct json_object *battery(void) {
     number(out, "battery_mv", mv);
     number(out, "supply_mv", ac);
     number(out, "temperature", temperature);
-    json_object_object_add(out, "charging", json_object_new_boolean(!source));
+    /* v1 reports supply presence, not charge current or charger enable state. */
+    json_object_object_add(out, "external_power", json_object_new_boolean(!source));
+    json_object_object_add(out, "charging", NULL);
     json_object_put(reply);
     return out;
 }
@@ -227,7 +229,7 @@ static bool apply(struct json_object *input, struct snapshot *before) {
     if (strcmp(json_object_get_string(revision), before->revision)) {
         message("电源策略已变化，请刷新后重新确认"); return false;
     }
-    if (ups && !json_object_get_boolean(field(before->battery, "charging"))) {
+    if (ups && !json_object_get_boolean(field(before->battery, "external_power"))) {
         message("启用 UPS 模式前，请先接入外部电源"); return false;
     }
     if (daily) {

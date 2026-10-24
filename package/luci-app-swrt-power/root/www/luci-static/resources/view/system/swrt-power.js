@@ -20,6 +20,7 @@ return view.extend({
         var reading = false, saving = false;
         var percent = E('strong', { 'class': 'swrt-power-percent' }, '—');
         var source = E('span', { 'class': 'np-chip' }, '等待状态');
+        var supplyHint = E('p', { 'class': 'np-hint', role: 'status' });
         var meter = E('progress', { max: '100', value: '0', 'aria-label': '电量' });
         var voltage = E('strong', {}, '—'), supply = E('strong', {}, '—'), temperature = E('strong', {}, '—');
         var active = E('strong', {}, '读取中'), details = E('p', { 'class': 'np-desc' });
@@ -71,6 +72,7 @@ return view.extend({
                 percent.textContent = voltage.textContent = supply.textContent = temperature.textContent = '—';
                 meter.value = 0;
                 source.textContent = '状态不可用';
+                supplyHint.textContent = '暂无可用电源数据。';
                 active.textContent = '当前：未确认';
                 details.textContent = '连接恢复后重新读取当前策略。';
                 message.textContent = data && data.message || '电源状态读取失败，请稍后重试';
@@ -81,14 +83,19 @@ return view.extend({
             var battery = data.battery;
             percent.textContent = battery.percentage + '%';
             meter.value = battery.percentage;
-            source.textContent = battery.charging ? '外部供电' : '电池供电';
+            source.textContent = battery.external_power ? '外部供电' : '电池供电';
             voltage.textContent = (battery.battery_mv / 1000).toFixed(2) + ' V';
             supply.textContent = (battery.supply_mv / 1000).toFixed(2) + ' V';
+            // Advisory values from the v1 manual; never write MCU thresholds.
+            supplyHint.textContent = !battery.external_power ? '电量为电压估算，当前使用电池供电。' :
+                battery.supply_mv < 4700 ? '输入电压低于 4.7V，可能触发停充保护；接电不代表正在充电。' :
+                battery.supply_mv < 4900 ? '输入电压未达官方建议的 4.9V，充电可能变慢；请结合机身充电指示灯判断。' :
+                '电量为电压估算；外部供电不代表正在充电，请结合机身充电指示灯判断。';
             temperature.textContent = battery.temperature + ' °C';
             var current = plan(data);
             active.textContent = '当前：' + { manual: '手动模式', ups: '车载 / UPS 模式', daily: '每日定时模式', custom: '自定义计划' }[current];
             if (current === 'ups') {
-                details.textContent = battery.charging ? '正在监测外部供电，断电后延时 ' + Math.ceil(data.car.timeout / 60) + ' 分钟关机。' :
+                details.textContent = battery.external_power ? '正在监测外部供电，断电后延时 ' + Math.ceil(data.car.timeout / 60) + ' 分钟关机。' :
                     (data.car.armed && data.car.countdown >= 0 ? '电池供电中，约 ' + data.car.countdown + ' 秒后关机。' : '等待接入外部电源后开始监测。');
             } else if (current === 'daily') {
                 details.textContent = '每日 ' + timeOf(data.events.find(function(row) { return row.action === 1; })) + ' 开机，' +
@@ -130,7 +137,7 @@ return view.extend({
             if (save.disabled || !latest) return;
             var selected = mode.value, minutes = Number(delay.value), revision = editRevision;
             var on = start.value, off = stop.value;
-            if (selected === 'ups' && (!Number.isInteger(minutes) || minutes < 1 || minutes > 600 || !latest.battery.charging)) {
+            if (selected === 'ups' && (!Number.isInteger(minutes) || minutes < 1 || minutes > 600 || !latest.battery.external_power)) {
                 ui.addNotification(null, E('p', {}, '请接入外部电源，并填写 1～600 分钟的整数延时。')); return;
             }
             if (selected === 'daily' && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(on) ||
@@ -170,6 +177,7 @@ return view.extend({
             E('div', { 'class': 'swrt-workspace' }, [
             E('div', { 'class': 'swrt-main-grid' }, [
             card('电池与供电', [ E('div', { 'class': 'swrt-power-hero' }, [ percent, source ]), meter,
+                supplyHint,
                 E('details', { 'class': 'swrt-power-more', open: '' }, [ E('summary', {}, '电池详情'),
                     E('div', { 'class': 'swrt-power-metrics' }, [ field('电池电压', voltage), field('外部电压', supply), field('主板温度', temperature) ]) ]) ]),
             card('电源模式', [ details, field('选择模式', mode), upsBox, dailyBox,

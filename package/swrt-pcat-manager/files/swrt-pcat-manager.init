@@ -14,7 +14,8 @@ start_service() {
     procd_set_param command /usr/sbin/swrt-pcat-manager --distro
     power_timezone="$(cat /etc/TZ 2>/dev/null || true)"
     procd_set_param env "TZ=${power_timezone:-UTC}"
-    procd_set_param respawn 3600 5 5
+    # Recover before the official five-second MCU watchdog expires.
+    procd_set_param respawn 3600 1 5
     procd_set_param stdout 1
     procd_set_param stderr 1
     procd_close_instance
