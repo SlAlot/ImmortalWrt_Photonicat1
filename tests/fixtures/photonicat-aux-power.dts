@@ -1,0 +1,33 @@
+/dts-v1/;
+
+/ {
+	gpio4: gpio-controller {
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
+	vcc5v0_usb30_otg0: regulator-parent {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc5v0_usb30_otg0";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+	};
+
+	vcc5v0_boost_en: pinctrl-state {};
+
+	vcc5v0_boost: regulator-vcc5v0-boost {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpio = <&gpio4 26 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vcc5v0_boost_en>;
+		regulator-name = "vcc5v0_boost";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&vcc5v0_usb30_otg0>;
+	};
+
+	usb-phy {
+		phy-supply = <&vcc5v0_boost>;
+	};
+};

@@ -7,6 +7,7 @@ import textwrap
 import unittest
 from feed_fixtures import write_qmodem_runtime
 from test_quickstart import write_quickstart
+from test_board_power import write_board_power
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,11 +53,12 @@ class PreparePipelineTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.repo = self.root / "repo"
         self.repo.mkdir()
-        for name in ("scripts", "files", "package"):
+        for name in ("scripts", "files", "package", "patches"):
             shutil.copytree(ROOT / name, self.repo / name)
         for name in (".config", "feeds.conf.default", "sources.lock.json", "diy.sh"):
             shutil.copy2(ROOT / name, self.repo / name)
         self.build = self.repo / "openwrt"
+        write_board_power(self.build)
         (self.build / "include").mkdir(parents=True)
         (self.build / "include/toplevel.mk").touch()
         (self.build / "tmp").mkdir()
@@ -126,6 +128,9 @@ echo '# configuration written to .config'
         self.assertIn("Validated", result.stdout)
         self.assertEqual((self.build / "files/www/luci-static/resources/swrt-ui.css").read_bytes(),
                          (self.repo / "files/www/luci-static/resources/swrt-ui.css").read_bytes())
+        self.assertTrue((self.build / "swrt-metadata/board-power.json").is_file())
+        self.assertEqual((self.build / "target/linux/rockchip/patches-6.12/950-swrt-photonicat-keep-aux-power.patch").read_bytes(),
+                         (self.repo / "patches/rockchip/950-swrt-photonicat-keep-aux-power.patch").read_bytes())
         menu = self.build / "package/swrt/luci-app-swrt-power/root/www/luci-static/resources/preload/swrt-menu.js"
         self.assertTrue(menu.is_file(), "The menu migration must be copied into the firmware package")
 
@@ -139,4 +144,11 @@ echo '# configuration written to .config'
         result = self.run_prepare("drop")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Missing PACKAGE_tom_modem", (self.repo / "prepare.log").read_text())
+        self.assertFalse((self.build / "swrt-metadata/config.resolved").exists())
+
+    def test_customization_cannot_enable_a_second_mcu_owner_after_guard(self):
+        (self.repo / "diy.sh").write_text("#!/bin/sh\nprintf 'CONFIG_PHOTONICAT_PM=y\\n' > target/linux/rockchip/config-6.12\n")
+        result = self.run_prepare("success")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Kernel MCU owner conflicts", (self.repo / "prepare.log").read_text())
         self.assertFalse((self.build / "swrt-metadata/config.resolved").exists())

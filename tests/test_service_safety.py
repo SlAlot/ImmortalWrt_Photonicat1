@@ -59,6 +59,24 @@ stop() { stop_service; procd_send_signal swrt-pcat-manager '*' TERM; }
         self.assertEqual(lines[-4:], ["swrt-pcat-manager * USR1", "sleep 2", "swrt-pcat-manager * TERM",
                                      "swrt-pcat-manager * TERM"])
 
+    def test_kernel_control_interface_blocks_raw_uart_start(self):
+        board = self.root / "board"
+        board.write_text("ariaboard,photonicat\n")
+        control = self.root / "pcat-pm-ctl"
+        control.touch()
+        script = (ROOT / "package/swrt-pcat-manager/files/swrt-pcat-manager.init").read_text()
+        script = script.replace("/tmp/sysinfo/board_name", str(board)).replace("/dev/ttyS4", "/dev/null")
+        script = script.replace("/dev/pcat-pm-ctl", str(control))
+        prefix = '''logger() { printf '%s\\n' "$*" >> "$TEST_LOG"; }
+procd_open_instance() { echo STARTED >> "$TEST_LOG"; }
+'''
+        result = subprocess.run(["sh", "-c", prefix + script + "\nstart_service\n"], env=self.env,
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        log = self.log.read_text()
+        self.assertIn("Kernel MCU interface is active", log)
+        self.assertNotIn("STARTED", log)
+
     def storage(self, *, native="f2fs", fs="squashfs", current="/opt/docker/", existing=False,
                 destination=False, running=False, alternative=""):
         old = self.root / "opt/docker"

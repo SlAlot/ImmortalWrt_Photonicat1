@@ -6,6 +6,7 @@ import pathlib
 import re
 import shutil
 import struct
+import subprocess
 import sys
 import zlib
 
@@ -17,6 +18,7 @@ out.mkdir(parents=True, exist_ok=True)
 assert not any(out.iterdir()), "Release output directory must be empty"
 audit = build / "swrt-metadata"
 audit.mkdir(parents=True, exist_ok=True)
+subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name("check-kernel-power.py")), str(build)], check=True)
 target = build / "bin/targets/rockchip/armv8"
 profiles = json.loads((target / "profiles.json").read_text())
 profile = profiles["profiles"]["ariaboard_photonicat"]
@@ -40,7 +42,7 @@ required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
             "docker-compose", "luci-app-dockerman", "modem_scan"}
 assert required <= packages, f"Missing installed packages: {required - packages}"
-forbidden = {"pcat-mgr", "pcat-manager", "kmod-photonicat-pm", "luci-app-modemband", "modemband", "luci-app-sms-tool-js",
+forbidden = {"pcat-mgr", "pcat-manager", "pcat-manager-v1", "kmod-photonicat-pm", "luci-app-modemband", "modemband", "luci-app-sms-tool-js",
              "luci-app-qmodem", "luci-app-qmodem-sms", "luci-app-qmodem-mwan",
              "luci-app-qmodem-ttl", "luci-app-qmodem-hc",
              "qmodem-uplink-manager", "luci-app-qmodem-uplink",

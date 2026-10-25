@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from test_kernel_power import write_kernel_config
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,6 +20,7 @@ class ImagePublicationTests(unittest.TestCase):
         self.target = self.root / "build/bin/targets/rockchip/armv8"
         self.target.mkdir(parents=True)
         (self.root / "build/swrt-metadata").mkdir()
+        self.kernel = write_kernel_config(self.root / "build")
         identity = self.root / "build/files/etc/swrt-release.json"
         identity.parent.mkdir(parents=True)
         identity.write_text(json.dumps({"repository": "SlAlot/ImmortalWrt_Photonicat1",
@@ -89,6 +91,14 @@ class ImagePublicationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Missing RK3568 loader", result.stderr)
 
+    def test_kernel_owner_is_rejected_even_without_conflicting_package(self):
+        self.write_images()
+        self.kernel.write_text(self.kernel.read_text() + "CONFIG_PHOTONICAT_PM=y\n")
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Resolved kernel MCU owner", result.stderr)
+        self.assertEqual(list((self.root / "release").iterdir()), [])
+
     def test_missing_package_blocks_release(self):
         self.write_images()
         self.manifest.write_text(self.manifest.read_text().replace("wlmb-server - 1.0", ""))
@@ -132,7 +142,7 @@ class ImagePublicationTests(unittest.TestCase):
     def test_second_mcu_owner_blocks_release(self):
         self.write_images()
         original = self.manifest.read_text()
-        for name in ("pcat-mgr", "pcat-manager", "kmod-photonicat-pm"):
+        for name in ("pcat-mgr", "pcat-manager", "pcat-manager-v1", "kmod-photonicat-pm"):
             with self.subTest(package=name):
                 self.manifest.write_text(original + "\n" + name + " - 1.0\n")
                 result = self.collect()

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=swrt-pcat-manager
 PKG_VERSION:=2025.08.18
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PCAT_COMMIT:=6f16e4ab4fbba220af932e02e5ef8f1a63f4bafd
 PKG_SOURCE:=$(PCAT_COMMIT).tar.gz
 PKG_SOURCE_URL:=https://github.com/photonicat/rockchip_rk3568_pcat_manager/archive
@@ -20,7 +20,7 @@ define Package/swrt-pcat-manager
   CATEGORY:=Utilities
   TITLE:=SWRT Photonicat 1 power service
   DEPENDS:=@TARGET_rockchip_armv8 +glib2 +libjson-c
-  CONFLICTS:=pcat-mgr pcat-manager kmod-photonicat-pm
+  CONFLICTS:=pcat-mgr pcat-manager pcat-manager-v1 kmod-photonicat-pm
   URL:=https://github.com/photonicat/rockchip_rk3568_pcat_manager/tree/v1
 endef
 

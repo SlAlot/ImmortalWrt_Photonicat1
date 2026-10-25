@@ -18,6 +18,7 @@ chmod 755 "$build_dir/files/usr/libexec/swrt-apk-status"
 
 cd "$build_dir"
 bash "$repo_dir/diy.sh"
+python3 "$repo_dir/scripts/patch-board-power.py" "$build_dir"
 ./scripts/feeds update -a
 python3 "$repo_dir/scripts/patch-feeds.py" "$build_dir"
 python3 "$repo_dir/scripts/patch-power-integration.py" "$build_dir"

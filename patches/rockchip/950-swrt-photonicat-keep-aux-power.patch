@@ -1,0 +1,13 @@
+Preserve the Photonicat 1 auxiliary rail during regulator probing.
+Keep runtime USB power control and the existing supply ordering intact.
+
+--- a/arch/arm64/boot/dts/rockchip/rk3568-photonicat.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3568-photonicat.dts
+@@ -147,6 +147,7 @@
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&vcc5v0_boost_en>;
+ 		regulator-name = "vcc5v0_boost";
++		regulator-boot-on;
+ 		regulator-min-microvolt = <5000000>;
+ 		regulator-max-microvolt = <5000000>;
+ 		vin-supply = <&vcc5v0_usb30_otg0>;

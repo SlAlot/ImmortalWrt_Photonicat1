@@ -5,7 +5,14 @@ USE_PROCD=1
 
 start_service() {
     [ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = 'ariaboard,photonicat' ] || return 1
-    [ -c /dev/ttyS4 ] || return 1
+    if [ -e /dev/pcat-pm-ctl ]; then
+        logger -t swrt-power 'Kernel MCU interface is active; refusing raw UART backend'
+        return 1
+    fi
+    if [ ! -c /dev/ttyS4 ]; then
+        logger -t swrt-power 'MCU UART /dev/ttyS4 is unavailable; power service cannot start'
+        return 1
+    fi
     if pidof pcat-mgr pcat-manager >/dev/null 2>&1; then
         logger -t swrt-power 'Another MCU owner is active; refusing to start'
         return 1

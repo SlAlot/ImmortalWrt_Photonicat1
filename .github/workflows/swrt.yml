@@ -8,7 +8,7 @@ on:
         type: string
   push:
     branches: [main]
-    paths: ['.config', 'feeds.conf.default', 'sources.lock.json', 'diy.sh', 'files/**', 'package/**', 'scripts/**', 'tests/**', '.github/workflows/**']
+    paths: ['.config', 'feeds.conf.default', 'sources.lock.json', 'diy.sh', 'files/**', 'package/**', 'patches/**', 'scripts/**', 'tests/**', '.github/workflows/**']
   pull_request:
     branches: [main]
 permissions:
@@ -27,7 +27,7 @@ jobs:
       - name: Check scripts and integration invariants
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck lua5.1 jq libglib2.0-dev libjson-c-dev pkgconf
+          sudo apt-get install -y shellcheck lua5.1 jq libglib2.0-dev libjson-c-dev pkgconf device-tree-compiler
           bash -n scripts/prepare.sh diy.sh
           shellcheck scripts/prepare.sh diy.sh
           shellcheck -s sh -e SC1091 files/etc/uci-defaults/99-swrt files/etc/hotplug.d/iface/95-swrt-qmodem-mwan

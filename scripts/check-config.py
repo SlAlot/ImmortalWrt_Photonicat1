@@ -46,7 +46,7 @@ required = [
     "TARGET_ROOTFS_EXT4FS", "TARGET_ROOTFS_SQUASHFS",
 ]
 forbidden = [
-    "PACKAGE_pcat-mgr", "PACKAGE_pcat-manager", "PACKAGE_kmod-photonicat-pm",
+    "PACKAGE_pcat-mgr", "PACKAGE_pcat-manager", "PACKAGE_pcat-manager-v1", "PACKAGE_kmod-photonicat-pm",
     "FEED_video", "FEED_istore", "FEED_nas", "FEED_nas_luci", "FEED_qmodem",
     "PACKAGE_luci-app-modemband", "PACKAGE_modemband",
     "PACKAGE_luci-app-sms-tool-js", "PACKAGE_luci-app-qmodem",
