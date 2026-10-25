@@ -54,6 +54,10 @@ function harness(readonly = false) {
     assert.equal(h.input('电源模式').value, 'manual');
     assert.ok(walk(h.root).some(n => n.textContent === '外部供电'));
     assert.ok(!walk(h.root).some(n => n.textContent === '充电中'));
+    const noTemperature = harness();
+    noTemperature.data.battery.temperature = 0;
+    await noTemperature.polls[0]();
+    assert.ok(walk(noTemperature.root).some(n => n.textContent === '未提供'), 'Missing v1 temperature is not displayed as 0 degrees');
     const voltage = harness();
     for (const [mv, expected] of [
         [4699, '输入电压低于 4.7V'], [4700, '输入电压未达官方建议的 4.9V'],

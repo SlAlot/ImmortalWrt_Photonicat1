@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -16,6 +17,14 @@ REPO = "SlAlot/ImmortalWrt_Photonicat1"
 
 
 class FirmwareIdentityTests(unittest.TestCase):
+    def test_rpcd_signature_uses_json_value_types_not_string_type_names(self):
+        paths = [PACKAGE / "usr/libexec/rpcd/luci.swrt_upgrade",
+                 ROOT / "package/luci-app-swrt-power/root/usr/libexec/rpcd/luci.swrt_power"]
+        upgrade, power = [json.loads(re.search(r"'(\{\"status\"[^\n]+\})'", path.read_text()).group(1)) for path in paths]
+        self.assertIs(type(upgrade["install"]["keep"]), int)
+        self.assertIs(type(power["configure"]["minutes"]), int)
+        self.assertIs(type(power["configure"]["confirm"]), int)
+        self.assertIs(type(upgrade["set_source"]["source"]), str)
     def test_stamped_version_matches_release_and_rejects_invalid_versions(self):
         spec = importlib.util.spec_from_file_location("stamp", ROOT / "scripts/stamp-firmware.py")
         module = importlib.util.module_from_spec(spec)
@@ -33,8 +42,14 @@ class FirmwareIdentityTests(unittest.TestCase):
         access = acl["luci-app-swrt-upgrade"]
         self.assertEqual(access["read"], {"ubus": {"luci.swrt_upgrade": ["status"]}})
         self.assertEqual(set(access["write"]["ubus"]["luci.swrt_upgrade"]),
-                         {"check", "download", "install"})
+                         {"check", "download", "install", "set_source"})
         self.assertNotIn("file", access["write"])
+
+    def test_proxy_is_factory_default_and_source_is_preserved_as_configuration(self):
+        self.assertIn("option source 'proxy'", (PACKAGE / "etc/config/swrt_upgrade").read_text())
+        recipe = (PACKAGE.parent / "Makefile").read_text()
+        self.assertIn("Package/luci-app-swrt-upgrade/conffiles", recipe)
+        self.assertIn("/etc/config/swrt_upgrade", recipe)
 
 
 @unittest.skipIf(os.name == "nt", "Real ash-compatible worker/lock tests run on Linux CI")
@@ -98,6 +113,34 @@ else
     printf '{"valid":true,"allow_backup":true}\\n'
 fi
 ''')
+        self.make_program("bin/uci", '''#!/usr/bin/env python3
+import json, os, pathlib, re, sys
+r=pathlib.Path(os.environ['SWRT_UPGRADE_ROOT']); args=sys.argv[1:]
+config=r/'etc/config'; staging=r/'uci-default'
+while args and args[0].startswith('-'):
+    flag=args.pop(0)
+    if flag in ('-c','-t'):
+        value=pathlib.Path(args.pop(0))
+        if flag=='-c': config=value
+        else: staging=value
+action,key=args[:2]; file=config/'swrt_upgrade'; delta=staging/'swrt_upgrade'
+if action=='get':
+    if not file.exists(): sys.exit(1)
+    value=re.search(r"option source '([^']*)'",file.read_text())
+    if not value: sys.exit(1)
+    print(value.group(1))
+elif action=='set':
+    staging.mkdir(parents=True,exist_ok=True)
+    data=json.loads(delta.read_text()) if delta.exists() else {}
+    if key.startswith('swrt_upgrade.main.source='): data['source']=key.split('=',1)[1]
+    delta.write_text(json.dumps(data))
+elif action=='commit':
+    if (r/'uci-fail').exists(): sys.exit(1)
+    data=json.loads(delta.read_text()); config.mkdir(parents=True,exist_ok=True)
+    file.write_text("config settings 'main'\\n\\toption source '"+data['source']+"'\\n")
+    delta.unlink()
+else: sys.exit(1)
+''')
         self.env = {**os.environ, "SWRT_UPGRADE_ROOT": str(self.root), "SWRT_UPGRADE_SCRIPT": str(ENGINE),
                     "PATH": str(self.root / "bin") + ":" + os.environ["PATH"]}
 
@@ -148,6 +191,66 @@ fi
         self.assertEqual(status["release"]["sha256"], self.sha)
         self.assertEqual(status["downloaded_bytes"], len(self.image))
         self.assertTrue(all(line.startswith("-T ") for line in self.log.read_text().splitlines()))
+
+    def test_proxy_covers_version_checksum_and_firmware_but_keeps_canonical_asset_identity(self):
+        self.prepare()
+        urls = (self.root / "curl.log").read_text().splitlines()
+        self.assertEqual(len(urls), 4)
+        self.assertTrue(all(url.startswith("https://gh-proxy.com/https://") for url in urls))
+        self.assertIn("api.github.com", urls[0])
+        self.assertTrue(urls[2].endswith("/sha256sums"))
+        self.assertTrue(urls[3].endswith("/" + self.name))
+        status = self.assert_ok("status")
+        self.assertEqual(status["source"], "proxy")
+        self.assertEqual(status["release"]["source"], "proxy")
+        self.assertTrue(status["release"]["url"].startswith("https://github.com/"))
+
+    def test_switch_source_persists_and_invalidates_old_ready_image(self):
+        self.prepare()
+        before = len((self.root / "curl.log").read_text().splitlines())
+        changed = self.assert_ok("set-source", {"source": "github"})
+        self.assertEqual(changed["source"], "github")
+        self.assertEqual(changed["state"]["phase"], "idle")
+        self.assertIsNone(changed["release"])
+        self.assertFalse((self.worker / "firmware.img.gz").exists())
+        self.assertEqual(self.assert_ok("status")["source"], "github")
+        self.prepare()
+        urls = (self.root / "curl.log").read_text().splitlines()[before:]
+        self.assertEqual(len(urls), 4)
+        self.assertTrue(all(url.startswith(("https://api.github.com/", "https://github.com/")) for url in urls))
+
+    def test_invalid_source_never_discards_ready_firmware(self):
+        self.prepare()
+        for value in ("https://example.com", "proxy; reboot", "", None, []):
+            self.assertNotEqual(self.run_engine("set-source", {"source": value}).returncode, 0)
+            self.assertEqual(self.assert_ok("status")["state"]["phase"], "ready")
+            self.assertTrue((self.worker / "firmware.img.gz").exists())
+
+    def test_same_source_preserves_ready_image_and_commit_failure_keeps_old_source(self):
+        self.prepare()
+        self.assertEqual(self.assert_ok("set-source", {"source": "proxy"})["state"]["phase"], "ready")
+        (self.root / "uci-fail").touch()
+        self.assertNotEqual(self.run_engine("set-source", {"source": "github"}).returncode, 0)
+        status = self.assert_ok("status")
+        self.assertEqual(status["source"], "proxy")
+        self.assertEqual(status["state"]["phase"], "ready")
+
+    def test_source_change_outside_ui_requires_fresh_verification(self):
+        self.prepare()
+        config = self.root / "etc/config/swrt_upgrade"
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_text("config settings 'main'\n\toption source 'github'\n")
+        self.assert_ok("install", {"keep": 0, "sha256": self.sha})
+        state = self.wait_worker()
+        self.assertEqual(state["phase"], "failed")
+        self.assertIn("更新源已变化", state["message"])
+        self.assertTrue(all(line.startswith("-T ") for line in self.log.read_text().splitlines()))
+
+    def test_installing_state_cannot_change_source(self):
+        self.assert_ok("check")
+        self.state.write_text('{"phase":"installing"}')
+        self.assertNotEqual(self.run_engine("set-source", {"source": "github"}).returncode, 0)
+        self.assertEqual(self.assert_ok("status")["source"], "proxy")
 
     def test_other_board_and_unidentified_firmware_never_download(self):
         for board, version in (("ariaboard,photonicat2", "1.9"), ("ariaboard,photonicat", "")):
@@ -246,6 +349,8 @@ fi
         (self.root / "download-delay").touch()
         self.assert_ok("download")
         self.assertNotEqual(self.run_engine("download").returncode, 0)
+        self.assertNotEqual(self.run_engine("set-source", {"source": "github"}).returncode, 0)
+        self.assertEqual(self.assert_ok("status")["source"], "proxy")
         self.assertEqual(self.wait_worker()["phase"], "ready")
         self.state.write_text('{"phase":"downloading"}')
         status = self.assert_ok("status")

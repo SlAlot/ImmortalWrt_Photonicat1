@@ -71,6 +71,7 @@ class OfficialPowerProfileTests(unittest.TestCase):
                 "gio-unix-2.0", "gthread-2.0", "json-c"], text=True).split()
             result = subprocess.run(["cc", "-O2", "-Werror=implicit-function-declaration",
                 str(source / "src/main.c"), str(source / "src/pmu-manager.c"), str(source / "src/controller.c"),
+                str(source / "src/swrt-schedule-time.c"),
                 *flags, "-o", str(source / "power-daemon")], capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             # Compile only. NEVER start the daemon against a host UART.
@@ -89,7 +90,19 @@ class OfficialPowerProfileTests(unittest.TestCase):
             binary = source / "safety-test"
             subprocess.run(["cc", "-O1", "-Werror=implicit-function-declaration",
                 "-I", str(source / "src"), str(ROOT / "tests/power_safety_harness.c"),
+                str(source / "src/swrt-schedule-time.c"),
                 *flags, "-o", str(binary)], check=True, capture_output=True, text=True)
+            result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    @unittest.skipIf(os.name == "nt", "Compile GLib calendar conversion on Linux")
+    def test_daily_wake_converts_device_time_to_utc_including_next_day_dst(self):
+        with tempfile.TemporaryDirectory() as folder:
+            binary = Path(folder) / "schedule-time"
+            flags = subprocess.check_output(["pkg-config", "--cflags", "--libs", "glib-2.0"], text=True).split()
+            subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                "-I", str(SERVICE / "files"), str(SERVICE / "files/swrt-schedule-time.c"),
+                str(ROOT / "tests/schedule_time_harness.c"), *flags, "-o", str(binary)], check=True)
             result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 

@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-swrt-upgrade
-PKG_VERSION:=1.0.2
+PKG_VERSION:=1.1.0
 PKG_RELEASE:=1
 PKG_LICENSE:=AGPL-3.0-only
 PKG_MAINTAINER:=SlAlot
@@ -13,7 +13,11 @@ define Package/luci-app-swrt-upgrade
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=SWRT verified online firmware upgrade
-  DEPENDS:=@TARGET_rockchip_armv8 +luci-base +rpcd +wlmb-server +curl +ca-bundle +jq-full +flock +coreutils-sha256sum +coreutils-stat
+  DEPENDS:=@TARGET_rockchip_armv8 +luci-base +rpcd +wlmb-server +curl +ca-bundle +jq-full +flock +coreutils-sha256sum +coreutils-stat +uci
+endef
+
+define Package/luci-app-swrt-upgrade/conffiles
+/etc/config/swrt_upgrade
 endef
 
 define Build/Compile

@@ -29,7 +29,7 @@ function walk(node) {
     return [node, ...node.children.flatMap(walk)];
 }
 function harness(phase = 'available', readonly = false) {
-    const state = { ok: true, eligible: true, current: '1.9', filesystem: 'squashfs',
+    const state = { ok: true, eligible: true, current: '1.9', filesystem: 'squashfs', source: 'proxy',
         state: { phase, message: '测试状态' }, downloaded_bytes: 0,
         release: { version: '2.0', name: 'immortalwrt-photonicat-1-squashfs-sysupgrade-2.0.img.gz',
             size: 104857600, sha256: 'a'.repeat(64), notes: '<script>never HTML</script>' } };
@@ -41,6 +41,10 @@ function harness(phase = 'available', readonly = false) {
             if (spec.method === 'status') return h.statusOffline ? Promise.reject(new Error('network offline')) : Promise.resolve(h.state);
             if (spec.method === 'check' && h.error) return Promise.resolve({ ok: false, message: h.error });
             if (spec.method === 'download') h.state.state.phase = 'downloading';
+            if (spec.method === 'set_source') {
+                if (h.sourceError) return Promise.resolve({ ok: false, message: h.sourceError });
+                h.state.source = args[0]; h.state.release = null; h.state.state.phase = 'idle';
+            }
             if (spec.method === 'install') {
                 h.state.state.phase = 'preparing';
                 if (h.installResponseLost) {
@@ -67,6 +71,7 @@ function harness(phase = 'available', readonly = false) {
     h.root = h.view.render(h.state);
     h.button = text => walk(h.root).find(n => n.tag === 'button' && n.textContent === text);
     h.keep = walk(h.root).find(n => n.tag === 'input' && n.attrs.type === 'checkbox');
+    h.source = walk(h.root).find(n => n.attrs.id === 'swrt-update-source');
     return h;
 }
 const flush = async () => { await new Promise(resolve => setImmediate(resolve)); };
@@ -74,7 +79,7 @@ const flush = async () => { await new Promise(resolve => setImmediate(resolve));
 (async () => {
     const available = harness();
     assert.deepEqual(walk(available.root).filter(n => n.tag === 'link').map(n => n.attrs.href), [
-        '/resources/wlmb-server/panel.css?v=1.1.3', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-upgrade.css?v=1.0.4'
+        '/resources/wlmb-server/panel.css?v=1.1.3', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-upgrade.css?v=1.1.0'
     ]);
     const restore = walk(available.root).find(n => n.tag === 'a' && n.textContent === '恢复配置备份');
     assert.equal(restore.attrs.href, '/cgi-bin/luci/admin/system/flash', 'Restore uses the native upload and restore workflow');
@@ -82,7 +87,27 @@ const flush = async () => { await new Promise(resolve => setImmediate(resolve));
         'Firmware details and release notes are expanded by default');
     assert.equal(available.calls.length, 0, 'Rendering must not download or flash');
     assert.equal(available.keep.checked, false, 'Fresh install is the default');
+    assert.equal(available.source.value, 'proxy', 'Domestic accelerator is selected by default');
     assert.equal(available.button('确认升级').disabled, true);
+
+    const switched = harness('ready');
+    switched.source.value = 'github';
+    await switched.source.fire('change');
+    assert.deepEqual(switched.calls.find(c => c[0] === 'set_source')[1], ['github']);
+    assert.equal(switched.source.value, 'github');
+    assert.equal(walk(switched.root).find(n => n.textContent === '查看发布页面').href,
+        'https://github.com/SlAlot/ImmortalWrt_Photonicat1/releases');
+    assert.equal(switched.button('确认升级').disabled, true, 'Switching source invalidates old ready image');
+    assert.equal(switched.button('下载并校验').disabled, true);
+    const refused = harness('ready');
+    refused.sourceError = '保存失败'; refused.source.value = 'github';
+    await refused.source.fire('change');
+    assert.equal(refused.source.value, 'proxy', 'Rejected source change restores previous selection');
+    assert.equal(refused.notices[0][1].textContent, '保存失败');
+    const busy = harness('downloading');
+    assert.equal(busy.source.disabled, true);
+    await busy.source.fire('change');
+    assert.equal(busy.calls.length, 0, 'Cannot switch source during a worker task');
     available.button('下载并校验').fire('click');
     await flush();
     assert.equal(available.calls.filter(c => c[0] === 'download').length, 1);
@@ -150,6 +175,9 @@ const flush = async () => { await new Promise(resolve => setImmediate(resolve));
     assert.equal(preparing.modal.attrs.title, '等待设备重新连接');
 
     const read = harness('ready', true);
+    assert.equal(read.source.disabled, true);
+    await read.source.fire('change');
+    assert.equal(read.calls.length, 0);
     for (const text of ['检查更新', '下载并校验', '确认升级', '下载配置备份'])
         assert.equal(read.button(text).disabled, true);
 

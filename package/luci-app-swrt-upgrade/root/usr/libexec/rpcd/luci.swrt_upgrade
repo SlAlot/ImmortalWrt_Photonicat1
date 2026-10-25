@@ -1,9 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: AGPL-3.0-only
 case "$1" in
-    list) printf '%s\n' '{"status":{},"check":{},"download":{},"install":{"keep":"int","sha256":"str"}}' ;;
+    list) printf '%s\n' '{"status":{},"check":{},"download":{},"set_source":{"source":""},"install":{"keep":0,"sha256":""}}' ;;
     call)
         case "$2" in
+            set_source) /usr/libexec/swrt-upgrade set-source; exit 0 ;;
             status|check|download|install) /usr/libexec/swrt-upgrade "$2"; exit 0 ;;
             *) printf '%s\n' '{"ok":false,"message":"不支持的操作"}' ;;
         esac

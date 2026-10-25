@@ -39,7 +39,7 @@ return view.extend({
         var refresh = E('button', { type: 'button', 'class': 'np-btn', hidden: '' }, '取消修改');
         function field(label, node) { return E('div', { 'class': 'np-info-field' }, [ E('span', { 'class': 'np-info-label' }, label), node ]); }
         var upsBox = E('div', { 'class': 'swrt-power-settings' }, [ field('断电后多久关机（分钟）', delay),
-            E('p', { 'class': 'np-hint' }, '接通外部电源后启用；恢复供电即取消倒计时。') ]);
+            E('p', { 'class': 'np-hint' }, '由充电器自动开机后启用；恢复供电即取消倒计时。') ]);
         var dailyBox = E('div', { 'class': 'swrt-power-times' }, [ field('开机时间', start), field('关机时间', stop) ]);
         function selection() {
             upsBox.hidden = mode.value !== 'ups';
@@ -91,7 +91,8 @@ return view.extend({
                 battery.supply_mv < 4700 ? '输入电压低于 4.7V，可能触发停充保护；接电不代表正在充电。' :
                 battery.supply_mv < 4900 ? '输入电压未达官方建议的 4.9V，充电可能变慢；请结合机身充电指示灯判断。' :
                 '电量为电压估算；外部供电不代表正在充电，请结合机身充电指示灯判断。';
-            temperature.textContent = battery.temperature + ' °C';
+            // The v1 status packet has no temperature; the official driver supplies zero.
+            temperature.textContent = Number.isFinite(battery.temperature) && battery.temperature !== 0 ? battery.temperature + ' °C' : '未提供';
             var current = plan(data);
             active.textContent = '当前：' + { manual: '手动模式', ups: '车载 / UPS 模式', daily: '每日定时模式', custom: '自定义计划' }[current];
             if (current === 'ups') {

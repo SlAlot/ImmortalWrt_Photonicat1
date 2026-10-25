@@ -8,6 +8,9 @@ SCRIPT="${SWRT_UPGRADE_SCRIPT:-/usr/libexec/swrt-upgrade}"
 DIR="$ROOT/tmp/swrt-upgrade"
 REPO='SlAlot/ImmortalWrt_Photonicat1'
 API="https://api.github.com/repos/$REPO/releases"
+CONFIG_DIR="$ROOT/etc/config"
+SOURCE="$(uci -c "$CONFIG_DIR" -q get swrt_upgrade.main.source 2>/dev/null || true)"
+case "$SOURCE" in proxy|github) ;; *) SOURCE=proxy ;; esac
 IMAGE="$DIR/firmware.img.gz"
 STATE="$DIR/state.json"
 RELEASE="$DIR/release.json"
@@ -58,11 +61,20 @@ require_device() {
 fetch() {
     curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
         --connect-timeout 5 --max-time 15 --max-filesize 1048576 \
-        -H 'Accept: application/vnd.github+json' -H 'User-Agent: SWRT-Online-Upgrade/1.0' \
-        -o "$2" "$1" 2>"$DIR/network.log"
+        -H 'Accept: application/vnd.github+json' -H 'User-Agent: SWRT-Online-Upgrade/1.1' \
+        -o "$2" "$(transport_url "$1")" 2>"$DIR/network.log"
+}
+transport_url() {
+    case "$SOURCE" in
+        proxy) printf 'https://gh-proxy.com/%s' "$1" ;;
+        github) printf '%s' "$1" ;;
+    esac
+}
+require_source() {
+    [ "$(jq -r '.source // ""' "$RELEASE")" = "$SOURCE" ] || fail '更新源已变化，请重新检查更新'
 }
 select_release() {
-    jq -e --arg repo "$REPO" --arg fs "$FS" '
+    jq -e --arg repo "$REPO" --arg fs "$FS" --arg source "$SOURCE" '
         select(.draft == false and .prerelease == false) |
         .tag_name as $tag |
         select($tag | type == "string" and test("^v[1-9][0-9]*\\.[0-9]$")) |
@@ -78,7 +90,7 @@ select_release() {
         select(($image.size|type) == "number" and $image.size > 0 and
             $image.size <= 1073741824 and ($image.size|floor) == $image.size) |
         select(($image.id|type) == "number") |
-        {version:$version,tag:$tag,name:$name,size:$image.size,id:$image.id,
+        {version:$version,tag:$tag,name:$name,size:$image.size,id:$image.id,source:$source,
          url:$image.browser_download_url,checksum_url:$sums[0].browser_download_url,
          digest:($image.digest // ""),published_at:.published_at,
          release_url:("https://github.com/"+$repo+"/releases/tag/"+$tag),notes:(.body // "")}
@@ -107,15 +119,16 @@ emit_status() {
     [ ! -s "$STATE" ] || state="$(cat "$STATE")"
     release='null'
     [ ! -s "$RELEASE" ] || release="$(cat "$RELEASE")"
-    jq -nc --arg current "$CURRENT" --arg fs "$FS" --arg board "$BOARD" \
+    jq -nc --arg current "$CURRENT" --arg fs "$FS" --arg board "$BOARD" --arg source "$SOURCE" \
         --arg repo "$REPO" --argjson state "$state" --argjson release "$release" \
         --argjson bytes "$bytes" \
-        '{ok:true,current:$current,filesystem:$fs,repository:$repo,
+        '{ok:true,current:$current,filesystem:$fs,repository:$repo,source:$source,
           eligible:($board == "ariaboard,photonicat" and $current != "" and $fs != ""),
           state:$state,release:$release,downloaded_bytes:$bytes}'
 }
 check_image() {
     require_device
+    require_source
     name="$(jq -r '.name' "$RELEASE")"
     version="$(jq -r '.version' "$RELEASE")"
     [ "$name" = "immortalwrt-photonicat-1-$FS-sysupgrade-$version.img.gz" ] || fail '文件系统或固件名称不匹配'
@@ -151,12 +164,39 @@ worker_exit() {
 
 case "$MODE" in
     status) emit_status ;;
+    set-source)
+        lock
+        require_device
+        request="$(cat)"
+        selected="$(printf '%s' "$request" | jq -er '.source | select(. == "proxy" or . == "github")')" || {
+            reply_error '请选择国内加速或 GitHub 官方源'; exit 1;
+        }
+        case "$(jq -r '.phase // "idle"' "$STATE" 2>/dev/null || true)" in
+            preparing|installing) reply_error '正在准备或刷写固件，暂不能切换更新源'; exit 1 ;;
+        esac
+        mkdir -p "$CONFIG_DIR"
+        [ ! -L "$CONFIG_DIR/swrt_upgrade" ] || { reply_error '更新源配置文件无效'; exit 1; }
+        [ -e "$CONFIG_DIR/swrt_upgrade" ] || : > "$CONFIG_DIR/swrt_upgrade"
+        mkdir -p "$DIR/uci"
+        if ! uci -c "$CONFIG_DIR" -t "$DIR/uci" set swrt_upgrade.main=settings ||
+           ! uci -c "$CONFIG_DIR" -t "$DIR/uci" set "swrt_upgrade.main.source=$selected" ||
+           ! uci -c "$CONFIG_DIR" -t "$DIR/uci" commit swrt_upgrade; then
+            rm -f "$DIR/uci/swrt_upgrade"
+            reply_error '更新源保存失败，请重试'; exit 1;
+        fi
+        if [ "$SOURCE" != "$selected" ]; then
+            rm -f "$RELEASE" "$IMAGE" "$IMAGE.part"
+            phase idle '更新源已保存，请检查更新'
+        fi
+        SOURCE="$selected"
+        emit_status
+        ;;
     check)
         lock
-        phase checking '正在连接 GitHub 检查正式发布'
+        phase checking '正在连接所选更新源检查正式发布'
         require_device
         rm -f "$RELEASE" "$IMAGE" "$IMAGE.part"
-        fetch "$API/latest" "$DIR/api.json" || fail '无法连接 GitHub 或访问受限，请稍后重试；也可下载固件后手动升级'
+        fetch "$API/latest" "$DIR/api.json" || fail '更新源连接失败，请切换更新源或稍后重试'
         select_release "$DIR/api.json" "$DIR/release.new" || fail '发布中没有匹配当前系统的完整固件和校验清单'
         mv "$DIR/release.new" "$RELEASE"
         if newer "$(jq -r '.version' "$RELEASE")"; then
@@ -170,6 +210,7 @@ case "$MODE" in
         lock
         require_device
         [ -s "$RELEASE" ] || fail '请先检查更新'
+        require_source
         newer "$(jq -r '.version' "$RELEASE")" || fail '没有可下载的新版本'
         phase downloading '正在下载固件，下载完成后仍需确认升级'
         setsid /bin/sh "$SCRIPT" _download </dev/null >"$DIR/worker.log" 2>&1 &
@@ -181,6 +222,7 @@ case "$MODE" in
         trap worker_exit EXIT
         trap 'exit 1' HUP INT TERM
         require_device
+        require_source
         tag="$(jq -er '.tag | select(test("^v[1-9][0-9]*\\.[0-9]$"))' "$RELEASE")"
         fetch "$API/tags/$tag" "$DIR/api.json" || fail '无法重新确认发布信息'
         select_release "$DIR/api.json" "$DIR/release.new" || fail '发布附件已变化，请重新检查'
@@ -203,8 +245,9 @@ case "$MODE" in
         rm -f "$IMAGE" "$IMAGE.part"
         curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --connect-timeout 8 --max-time 900 --speed-time 30 --speed-limit 1024 \
-            --max-filesize "$size" -o "$IMAGE.part" "$(jq -r '.url' "$RELEASE")" \
-            2>"$DIR/network.log" || fail '固件下载失败，请检查 GitHub 连接后重试'
+            -H 'User-Agent: SWRT-Online-Upgrade/1.1' \
+            --max-filesize "$size" -o "$IMAGE.part" "$(transport_url "$(jq -r '.url' "$RELEASE")")" \
+            2>"$DIR/network.log" || fail '固件下载失败，请检查所选更新源或切换后重试'
         mv "$IMAGE.part" "$IMAGE"
         phase verifying '正在校验 SHA256、设备和分区兼容性'
         check_image

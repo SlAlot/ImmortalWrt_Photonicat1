@@ -7,6 +7,7 @@
 var statusCall = rpc.declare({ object: 'luci.swrt_upgrade', method: 'status', expect: {} });
 var checkCall = rpc.declare({ object: 'luci.swrt_upgrade', method: 'check', expect: {} });
 var downloadCall = rpc.declare({ object: 'luci.swrt_upgrade', method: 'download', expect: {} });
+var sourceCall = rpc.declare({ object: 'luci.swrt_upgrade', method: 'set_source', params: [ 'source' ], expect: {} });
 var installCall = rpc.declare({ object: 'luci.swrt_upgrade', method: 'install', params: [ 'keep', 'sha256' ], expect: {} });
 
 return view.extend({
@@ -30,12 +31,16 @@ return view.extend({
         var progress = E('progress', { max: '100', value: '0', 'aria-label': '固件下载进度' });
         var progressText = E('span', { 'class': 'np-hint' });
         var notes = E('pre', { 'class': 'swrt-release-notes' }, '检查更新后显示发布说明。');
-        var releaseLink = E('a', { href: 'https://github.com/SlAlot/ImmortalWrt_Photonicat1/releases', target: '_blank', rel: 'noopener noreferrer' }, '查看 GitHub 发布');
+        var releaseLink = E('a', { href: 'https://gh-proxy.com/#https://github.com/SlAlot/ImmortalWrt_Photonicat1', target: '_blank', rel: 'noopener noreferrer' }, '查看发布页面');
         var keep = E('input', { type: 'checkbox' });
         var checkButton = E('button', { type: 'button', 'class': 'np-btn primary' }, '检查更新');
         var downloadButton = E('button', { type: 'button', 'class': 'np-btn', disabled: '' }, '下载并校验');
         var installButton = E('button', { type: 'button', 'class': 'np-btn primary', disabled: '' }, '确认升级');
         var backupButton = E('button', { type: 'button', 'class': 'np-btn' }, '下载配置备份');
+        var updateSource = E('select', { id: 'swrt-update-source', 'class': 'np-input', 'aria-label': '在线更新源' }, [
+            E('option', { value: 'proxy' }, '国内加速（gh-proxy.com）'),
+            E('option', { value: 'github' }, 'GitHub 官方')
+        ]);
         var root;
 
         function notifyError(err) {
@@ -60,6 +65,8 @@ return view.extend({
             filename.textContent = release.name || '检查后显示匹配的固件';
             digest.textContent = release.sha256 || '下载时获取并验证';
             notes.textContent = String(release.notes || '暂无发布说明。').slice(0, 24000);
+            releaseLink.href = data.source === 'github' ? 'https://github.com/SlAlot/ImmortalWrt_Photonicat1/releases' :
+                'https://gh-proxy.com/#https://github.com/SlAlot/ImmortalWrt_Photonicat1';
             message.textContent = state.message || '';
             message.dataset.phase = state.phase || 'idle';
             checkButton.disabled = !writable || pending || busy;
@@ -67,6 +74,8 @@ return view.extend({
             installButton.disabled = !writable || pending || !data.eligible || state.phase !== 'ready';
             keep.disabled = !writable || pending || busy;
             backupButton.disabled = !writable || busy;
+            updateSource.disabled = !writable || pending || busy;
+            if (!pending) updateSource.value = data.source === 'github' ? 'github' : 'proxy';
             progress.hidden = state.phase !== 'downloading';
             progressText.hidden = state.phase !== 'downloading';
             var percent = release.size ? Math.min(100, 100 * Math.max(0, Number(data.downloaded_bytes) || 0) / release.size) : 0;
@@ -85,6 +94,7 @@ return view.extend({
             latest = null;
             checkButton.disabled = downloadButton.disabled = installButton.disabled = true;
             keep.disabled = backupButton.disabled = true;
+            updateSource.disabled = true;
             statusFailures++;
             if (installRequested) {
                 message.textContent = '设备连接暂时中断，正在等待升级和重启，请勿断电。';
@@ -112,6 +122,11 @@ return view.extend({
         }
         checkButton.addEventListener('click', function() { perform(checkCall); });
         downloadButton.addEventListener('click', function() { perform(downloadCall); });
+        updateSource.addEventListener('change', function() {
+            if (updateSource.disabled) return Promise.resolve();
+            var selected = updateSource.value;
+            return perform(function() { return sourceCall(selected); });
+        });
         backupButton.addEventListener('click', function() {
             var form = E('form', { method: 'post', action: L.env.cgi_base + '/cgi-backup' },
                 E('input', { type: 'hidden', name: 'sessionid', value: rpc.getSessionID() }));
@@ -154,13 +169,17 @@ return view.extend({
         root = E('div', { id: 'swrt-upgrade', 'class': 'np-root swrt-page' }, [
             E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css') + '?v=1.1.3' }),
             E('link', { rel: 'stylesheet', href: L.resource('swrt-ui.css') + '?v=1.0.4' }),
-            E('link', { rel: 'stylesheet', href: L.resource('swrt-upgrade.css') + '?v=1.0.4' }),
+            E('link', { rel: 'stylesheet', href: L.resource('swrt-upgrade.css') + '?v=1.1.0' }),
             E('div', { 'class': 'np-page-heading' }, [
                 E('div', {}, [ E('h2', { 'class': 'np-page-title' }, 'SWRT 在线更新'),
                     E('p', { 'class': 'np-page-description' }, '光影猫一代 · 从 SlAlot 的 GitHub 正式发布获取固件') ]),
                 E('span', { 'class': 'np-chip' }, 'Photonicat 1')
             ]),
             E('div', { 'class': 'swrt-workspace' }, [
+            E('div', { 'class': 'swrt-source-bar' }, [
+                E('label', { 'for': 'swrt-update-source' }, '更新源'), updateSource,
+                E('span', { 'class': 'np-hint' }, '检查更新与固件下载均使用所选源。')
+            ]),
             E('div', { 'class': 'swrt-main-grid' }, [
                 card('固件版本', [
                     E('div', { 'class': 'np-info-grid' }, [ field('当前版本', current), field('最新正式版', available), field('系统类型', filesystem), field('固件大小', size) ]),

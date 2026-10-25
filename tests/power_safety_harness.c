@@ -89,7 +89,35 @@ int main(void)
     state->dev_channel = channel;
     state->swrt_report_at -= 16000000;
     g_assert_false(pcat_pmu_manager_pmu_status_get(NULL, NULL, NULL, NULL));
+    /* Inspect the real queued MCU frame, not only the UI's local schedule. */
+    if (state->dev_write_current_command_data) {
+        pcat_pmu_manager_command_data_free(state->dev_write_current_command_data);
+        state->dev_write_current_command_data = NULL;
+    }
+    g_queue_clear_full(state->dev_write_command_queue, (GDestroyNotify)pcat_pmu_manager_command_data_free);
+    g_setenv("TZ", "CST-8", TRUE);
+    PCatManagerPowerScheduleData row = {0};
+    row.enabled = TRUE; row.action = 1; row.year = 2000; row.month = 1; row.day = 1;
+    row.hour = 7; row.minute = 25; row.enable_bits = 56; row.dow_bits = 127;
+    user.power_schedule_data = g_ptr_array_new();
+    g_ptr_array_add(user.power_schedule_data, &row);
+    pcat_pmu_manager_schedule_time_update();
+    PCatPMUManagerCommandData *wire = state->dev_write_current_command_data;
+    g_assert_nonnull(wire);
+    g_assert_cmpuint(wire->command, ==, PCAT_PMU_MANAGER_COMMAND_SCHEDULE_STARTUP_TIME_SET);
+    g_assert_cmpuint(wire->buffer->data[13], ==, 23);
+    g_assert_cmpuint(wire->buffer->data[14], ==, 25);
+    g_assert_cmpuint(wire->buffer->data[15], ==, 127);
+    g_assert_cmpuint(wire->buffer->data[16], ==, 56);
+    swrt_pmu_schedule_tick(NULL);
+    g_assert_cmpuint(g_queue_get_length(state->dev_write_command_queue), ==, 0);
+    g_ptr_array_unref(user.power_schedule_data);
+    user.power_schedule_data = NULL;
+    pcat_pmu_manager_schedule_time_update();
+    wire = g_queue_peek_tail(state->dev_write_command_queue);
+    g_assert_cmpuint(wire->buffer->len, ==, 13); /* empty startup list restores manual mode */
     if (state->dev_write_source) g_source_remove(state->dev_write_source);
+    pcat_pmu_manager_command_data_free(state->dev_write_current_command_data);
     g_queue_free_full(state->dev_write_command_queue, (GDestroyNotify)pcat_pmu_manager_command_data_free);
     g_io_channel_shutdown(state->dev_channel, FALSE, NULL);
     g_io_channel_unref(state->dev_channel);

@@ -25,6 +25,9 @@ def profile(root):
     }
 ''', "")
     main = replace(main, "    pcat_modem_manager_uninit();\n", "")
+    main = replace(main, "    g_main_loop_run(g_pcat_main_loop);",
+                   "    g_timeout_add_seconds(60, swrt_pmu_schedule_tick, NULL);\n"
+                   "    g_main_loop_run(g_pcat_main_loop);")
     main, count = re.subn(r"^\s*pcat_modem_manager_iface_state_set\([^;]+;\n", "", main, flags=re.M)
     if count != 3 or "pcat_modem_manager_" in main:
         raise ValueError("Unexpected official modem dependency in main")
@@ -61,6 +64,8 @@ def profile(root):
     write(root / "src/controller.c", controller)
 
     pmu = (root / "src/pmu-manager.c").read_text(encoding="utf-8")
+    pmu = replace(pmu, '#include "pmu-manager.h"',
+                  '#include "pmu-manager.h"\n#include "swrt-schedule-time.h"')
     if pmu.count("pcat_modem_manager_device_power_usage_get()") != 1:
         raise ValueError("Official modem profile changed")
     # All three voltage profiles are zero in the current official v1 system.
@@ -98,10 +103,76 @@ def profile(root):
                      "       !g_pcat_pmu_manager_data.swrt_status_valid ||\n"
                      "       g_get_monotonic_time() - g_pcat_pmu_manager_data.swrt_report_at >= 15000000)")
     pmu = before + getter + after
+    start = pmu.index("static void pcat_pmu_manager_schedule_time_update_internal(")
+    end = pmu.index("static void pcat_pmu_manager_charger_on_auto_start_internal(", start)
+    before, schedule, after = pmu[:start], pmu[start:end], pmu[end:]
+    schedule = replace(schedule, "            v = sdata->year & 0xFF;", """            gint swrt_hour = sdata->hour, swrt_minute = sdata->minute;
+            if(sdata->enable_bits == 56 && sdata->dow_bits == 127)
+            {
+                GDateTime *now = g_date_time_new_now_local();
+                gboolean valid = swrt_daily_utc(sdata->hour, sdata->minute,
+                    now, &swrt_hour, &swrt_minute);
+                g_date_time_unref(now);
+                if(!valid) continue;
+            }
+            v = sdata->year & 0xFF;""")
+    schedule = replace(schedule, "            v = sdata->hour;", "            v = swrt_hour;")
+    schedule = replace(schedule, "            v = sdata->minute;", "            v = swrt_minute;")
+    schedule = replace(schedule, """            pcat_pmu_pm_dev_write_data_request(pmu_data,
+                PCAT_PMU_MANAGER_COMMAND_SCHEDULE_STARTUP_TIME_SET,
+                startup_setup_buffer->data, startup_setup_buffer->len, TRUE);""",
+        "            swrt_startup_send(pmu_data, startup_setup_buffer->data, startup_setup_buffer->len);")
+    schedule = replace(schedule, """            pcat_pmu_pm_dev_write_data_request(pmu_data,
+                PCAT_PMU_MANAGER_COMMAND_SCHEDULE_STARTUP_TIME_SET,
+                NULL, 0, TRUE);""", "            swrt_startup_send(pmu_data, NULL, 0);")
+    schedule = replace(schedule, """        pcat_pmu_pm_dev_write_data_request(pmu_data,
+            PCAT_PMU_MANAGER_COMMAND_SCHEDULE_STARTUP_TIME_SET, NULL, 0, TRUE);""",
+        "        swrt_startup_send(pmu_data, NULL, 0);")
+    cache = """/* Refresh only changed UTC plans; do not repeatedly write unchanged MCU settings. */
+static gint swrt_startup_size = -1;
+static guint8 swrt_startup_data[48];
+static void swrt_startup_send(PCatPMUManagerData *pmu_data, const guint8 *data, guint len)
+{
+    if(len > sizeof(swrt_startup_data)) return;
+    if(swrt_startup_size == (gint)len && (!len || !memcmp(swrt_startup_data, data, len))) return;
+    pcat_pmu_pm_dev_write_data_request(pmu_data,
+        PCAT_PMU_MANAGER_COMMAND_SCHEDULE_STARTUP_TIME_SET, data, len, TRUE);
+    if(len) memcpy(swrt_startup_data, data, len);
+    swrt_startup_size = len;
+}
+
+"""
+    pmu = before + cache + schedule + after
+    start = pmu.index("void pcat_pmu_manager_schedule_time_update()")
+    end = pmu.index("void pcat_pmu_manager_charger_on_auto_start(", start)
+    before, refresh, after = pmu[:start], pmu[start:end], pmu[end:]
+    refresh = replace(refresh, "    pcat_pmu_manager_schedule_time_update_internal(&g_pcat_pmu_manager_data);",
+                      "    swrt_startup_size = -1;\n    pcat_pmu_manager_schedule_time_update_internal(&g_pcat_pmu_manager_data);")
+    pmu = before + refresh + after
     pmu += "\ngboolean swrt_pmu_ups_armed(void) { return g_pcat_pmu_manager_data.swrt_status_valid && (g_pcat_pmu_manager_data.power_on_event == 3 || g_pcat_pmu_manager_data.power_on_event == 4); }\n"
+    pmu += """
+gboolean swrt_pmu_schedule_tick(gpointer unused)
+{
+    (void)unused;
+    if(!g_pcat_pmu_manager_data.initialized || g_pcat_pmu_manager_data.dev_channel == NULL ||
+       !g_pcat_pmu_manager_data.swrt_status_valid) return G_SOURCE_CONTINUE;
+    const PCatManagerUserConfigData *config = pcat_main_user_config_data_get();
+    if(config->power_schedule_data != NULL)
+        for(guint i = 0; i < config->power_schedule_data->len; i++)
+        {
+            const PCatManagerPowerScheduleData *row = g_ptr_array_index(config->power_schedule_data, i);
+            if(row->enabled && row->action && row->enable_bits == 56 && row->dow_bits == 127)
+            {
+                pcat_pmu_manager_schedule_time_update_internal(&g_pcat_pmu_manager_data);
+                break;
+            }
+        }
+    return G_SOURCE_CONTINUE;
+}
+"""
     write(root / "src/pmu-manager.c", pmu)
     header = (root / "src/pmu-manager.h").read_text(encoding="utf-8")
-    header = replace(header, "G_END_DECLS", "gboolean swrt_pmu_ups_armed(void);\n\nG_END_DECLS")
+    header = replace(header, "G_END_DECLS", "gboolean swrt_pmu_ups_armed(void);\ngboolean swrt_pmu_schedule_tick(gpointer unused);\n\nG_END_DECLS")
     write(root / "src/pmu-manager.h", header)
 
     # Match the running official v1 configuration: zero preserves MCU defaults.
@@ -116,11 +187,13 @@ power_dependencies = [dependency('glib-2.0'), dependency('gio-2.0'),
     dependency('json-c'), dependency('threads')]
 subdir('src')
 """)
-    write(root / "src/meson.build", """executable('pcat-manager', ['main.c', 'pmu-manager.c', 'controller.c'],
+    write(root / "src/meson.build", """executable('pcat-manager', ['main.c', 'pmu-manager.c', 'controller.c', 'swrt-schedule-time.c'],
     dependencies: power_dependencies, install: true)
 executable('swrt-power-client', 'swrt-power-client.c',
     dependencies: power_dependencies, install: true)
 """)
+    for name in ("swrt-schedule-time.c", "swrt-schedule-time.h"):
+        write(root / "src" / name, (Path(__file__).parent / name).read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

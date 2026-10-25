@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml/badge.svg)](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml)
 
-面向 **光影猫一代（Photonicat 1 / RK3568）** 的 ImmortalWrt 定制固件，集成 QModem Next、网络面板、iStore、Docker、多 WAN、DiskMan、SWRT 在线更新与电源管理。
+面向 **光影猫一代（Photonicat 1 / RK3568）** 的 ImmortalWrt 定制固件，集成 QModem Next、网络面板、iStore、Docker、多 WAN、DiskMan、SWRT 在线更新与电源管理。在线更新默认使用国内加速，可切换 GitHub 官方源。
 
 通过 GitHub Actions 自动构建，构建与检查通过后发布固件。**本项目不适用于光影猫二代。**
 
@@ -116,14 +116,14 @@
 
 ### SWRT 在线更新
 
-1. 打开“系统 → SWRT 在线更新”，点击“检查更新”。
+1. 打开“系统 → SWRT 在线更新”，默认使用国内加速 `gh-proxy.com`，也可切换 GitHub 官方源，再点击“检查更新”。
 2. 点击“下载配置备份”，将备份保存到电脑；容器等重要数据另行备份。
 3. 点击“下载并校验”，等待大小、SHA256 和系统兼容性检查通过。
 4. 点击“确认升级”，核对版本和配置选项后开始刷写，期间不要断电。
 
 需要还原已保存的配置时，点击“恢复配置备份”，进入系统原生页面上传并确认恢复。
 
-**默认不保留配置**，重启后访问 `192.168.17.1` 重新设置。下载完成不会自动刷写；只接收本仓库的正式新版，自动匹配当前 SquashFS / ext4 类型，不提供强制刷写或回刷入口。GitHub 无法访问时会明确提示失败，可改用上面的网页手动更新。
+**默认不保留配置**，重启后访问 `192.168.17.1` 重新设置。下载完成不会自动刷写；只接收本仓库的正式新版，自动匹配当前 SquashFS / ext4 类型，不提供强制刷写或回刷入口。更新源切换后自动保存，版本查询、校验清单和固件下载均走所选源；连接失败可换源重新检查，或使用上面的网页手动更新。
 
 **v1.3 等旧版本需先用上面的网页手动升级到 v1.5 或更新版本**，之后才可使用此入口。切换固件类型、分区变化或无法启动时仍需 USB 线刷。
 
