@@ -15,3 +15,5 @@ LUCI_DEPENDS:=@(aarch64||arm||x86_64) +luci-compat +luci-lib-jsonc +luci-lib-nix
 LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk
+
+# call BuildPackage - OpenWrt buildroot signature
