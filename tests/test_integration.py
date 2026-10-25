@@ -152,6 +152,14 @@ class ImagePublicationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Conflicting installed packages", result.stderr)
 
+    def test_second_docker_launcher_blocks_release(self):
+        self.write_images()
+        self.manifest.write_text(self.manifest.read_text() + "\nluci-app-docker - 1.0\n")
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Conflicting installed packages", result.stderr)
+        self.assertIn("luci-app-docker", result.stderr)
+
     def test_second_mcu_owner_blocks_release(self):
         self.write_images()
         original = self.manifest.read_text()

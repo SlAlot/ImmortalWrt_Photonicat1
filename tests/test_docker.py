@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -73,6 +74,17 @@ class DockerCompatibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "source changed"):
             patch.patch_docker(self.root)
         self.assertEqual(menu.read_bytes(), before)
+
+    def test_second_docker_launcher_is_rejected_in_resolved_config(self):
+        original = (ROOT / ".config").read_text()
+        config = self.root / ".config"
+        for mode in ("y", "m"):
+            with self.subTest(mode=mode):
+                config.write_text(original + "\nCONFIG_PACKAGE_luci-app-docker=" + mode + "\n")
+                result = subprocess.run([sys.executable,
+                    str(ROOT / "scripts/check-config.py"), str(config)], capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Unexpected PACKAGE_luci-app-docker", result.stderr)
 
     @unittest.skipUnless(shutil.which("node"), "Node.js required")
     def test_http_stream_helpers_handle_split_headers_and_partial_writes(self):

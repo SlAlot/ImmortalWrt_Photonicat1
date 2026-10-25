@@ -9,6 +9,7 @@
 5. **容器日志**：锁定的 JS 管理器未处理 Docker 的 stdout/stderr 多路复用帧。回移上游提出的日志解码、空白与换行显示修复，RPC 使用本地 Unix socket，不依赖开放 2375 端口。
 6. **存储**：继续使用既有的全新 SquashFS 安装修复，将未使用的默认数据目录放到原生 `/overlay/docker`，避免 OverlayFS 套 OverlayFS。已有数据不会自动搬移、清空或隐藏。
 7. **再次复查补充**：旧菜单隐藏标题后，旧根入口改为直接别名，避免 LuCI 无法选择首页。Lua 接口先拼接完整响应再解析 JSON / NDJSON，统一连接、发送和空响应的错误码，关闭连接失败的 socket，并正确处理跨 HTTP 数据块的日志帧及普通终端日志。JS 管理器的 RPC 与流式接口也改为拼接完整响应头和循环写出请求，流式接口补齐 HTTP 模块导入。
+8. **启动入口冲突防护**：真机官方系统同时安装了使用 `/etc/init.d/docker` 的旧 `luci-app-docker` 与标准 `/etc/init.d/dockerd`。SWRT 只选择标准 dockerd 和 luci-app-dockerman，并在配置解析、成品清单两处拒绝混入旧插件，避免两套入口争用同一守护进程。
 
 所有 feed 修改先校验锁定源码的 SHA256；上游文件不匹配时停止准备，不做模糊套用。记录位于 Actions 诊断包中的 `docker-compat.json`。
 
@@ -25,7 +26,28 @@
 - 修改后的 Lua API 再次连接真实 Docker 29.6.1，读取含 20 KB 元数据的容器响应并验证旧控制台模型；容器可写层、数据卷、bridge HTTP 与 DNS 测试再次通过。
 - 修复首次正式构建暴露的包发现遗漏：兼容库 Makefile 补齐 OpenWrt 扫描声明。使用锁定版本的真实 `include/scan.mk` 和 GNU Make `DUMP=1` 验证包名、版本及依赖可生成，并增加使用同一扫描表达式的回归检查。
 
-这些检查不能替代 RK3568 真机或实际 iStore 应用安装验收。LuCI 页面加载、外接磁盘、蜂窝网络、多 WAN 与代理组合仍需目标固件验证；ARM 构建、镜像校验和发布状态以对应 Actions 结果为准。
+## 2026-10-25 RK3568 真机复核
+
+本轮接入的是官方 `photonicatWrt 26.10.0` / Linux `6.12.103`。测试使用独立网络命名空间和临时数据目录，没有刷写系统，也没有替换官方电源管理器或修改现用防火墙配置。
+
+从已校验的 SWRT v1.7 SquashFS 镜像中提取实际 ARM64 程序，验证 Docker **29.6.1**、containerd **2.2.5**、runc **1.3.6**、Compose **5.1.4**；再加载本次修正的 Lua 库和 ucode RPC，使用真机原生 nixio、LuCI 和 Unix socket，而非模拟 socket。
+
+| 检查 | 结果 |
+| --- | --- |
+| 容器执行、可写层、数据卷跨容器读写 | 通过 |
+| 重新启动守护进程后保留数据卷、恢复 unless-stopped 容器 | 通过 |
+| SWRT 编译出的 Compose 创建、运行、正常退出和清理 | 通过 |
+| Lua `_ping`、版本、info、容器列表、inspect、日志及 iStore 所用 model.new | 通过 |
+| 修正后的 ucode RPC 查询版本、容器列表 | HTTP 200，JSON 正常 |
+| 系统根 OverlayFS 存储 | 真机复现容器挂载 `invalid argument` |
+| 原生 F2FS `/overlay` 存储 | 同一容器写入通过，验证现有目录修复 |
+| 旧 WAN 拦截规则 | 真机复现主动 HTTP 请求的回包被拒绝 |
+| 修正后的 WAN 规则 | 容器 HTTP、UDP DNS 通过，新的 WAN 入站仍被拒绝 |
+| 容器 HTTP 与发布端口 | 在隔离网络中访问通过 |
+
+官方自带 Compose 在本机执行 `version` 即出现段错误，但 SWRT 镜像中的 Compose 和 Docker 官方 ARM64 Compose 均能运行，因此没有照搬官方 Docker 软件包或双启动配置。
+
+这些结果验证了目标硬件上的用户态程序及修复，**不等于已经启动本次完整 SWRT 固件**。其内核、LuCI 页面、外接磁盘、蜂窝网络、多 WAN、代理组合和商店应用实际镜像仍需在目标固件上验收；没有把一个最小容器测试描述成所有 iStore 应用均已验证。ARM 构建、镜像校验和发布状态以对应 Actions 结果为准。
 
 ## 使用限制
 

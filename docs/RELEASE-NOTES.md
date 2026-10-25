@@ -8,11 +8,12 @@
 - 修正默认 WAN 规则误拦容器回包的问题，避免 Docker 主动将路由器转发默认策略改为丢弃；保留已有防火墙自定义项与流量卸载设置。
 - 补齐 Docker 容器日志解码和换行显示，构建与发布前检查容器运行时及 iStore 依赖是否完整。
 - 复查补齐旧 Docker 入口跳转，修正 Lua 分段 JSON / 日志解析和服务未启动时的错误返回，完善 JS 后端响应头拼接及完整请求写入。
+- 修复 Lua 兼容库的构建发现声明；配置与成品检查拒绝第二套旧 Docker 启动插件。
 - 辅助 5V 电源增加开机保持属性，避免 regulator 初始化时主动拉低使能 GPIO；运行时继续由原 USB 电源策略控制。
 - 检查三层内核配置及最终编译出的内核，拦截与裸串口后台冲突的 MCU 驱动，并确认 UART 驱动为内建。
 - 服务启动时发现官方内核 MCU 控制接口，会停止启动并记录原因，避免重复占用串口。
 - 补齐旧管理器名称的冲突检查，并将最终内核配置和电源检查结果保存到 Actions 诊断附件。
-- 更新官方源码对照与使用说明；GitHub 98 项回归检查通过，Docker 29.6.1 / Compose 5.1.4 已完成隔离运行验证。ARM 固件构建与镜像检查以本次 Actions 结果为准。
+- Docker 29.6.1 / Compose 5.1.4、iStore Lua 接口及 ucode RPC 已在 RK3568 官方系统的隔离环境运行验证，并实测确认存储与 WAN 回包修复。完整固件及商店实际应用的验收范围见 [Docker 说明](https://github.com/SlAlot/ImmortalWrt_Photonicat1/blob/main/docs/DOCKER-COMPATIBILITY.md)。构建与镜像检查以本次 Actions 结果为准。
 
 **本版尚未确认解决实际不充电或拔掉充电线后关机的问题，充电、断电接管及 USB / SD 长期稳定性仍待真机验证。** 电量为电压估算，一代目前没有独立充电开关。详见[官方源码对照](https://github.com/SlAlot/ImmortalWrt_Photonicat1/blob/main/docs/OFFICIAL-SOURCE-COMPARISON.md)。
 

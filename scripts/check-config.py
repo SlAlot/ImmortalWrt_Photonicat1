@@ -49,6 +49,7 @@ required = [
     "TARGET_ROOTFS_EXT4FS", "TARGET_ROOTFS_SQUASHFS",
 ]
 forbidden = [
+    "PACKAGE_luci-app-docker",
     "PACKAGE_pcat-mgr", "PACKAGE_pcat-manager", "PACKAGE_pcat-manager-v1", "PACKAGE_kmod-photonicat-pm",
     "FEED_video", "FEED_istore", "FEED_nas", "FEED_nas_luci", "FEED_qmodem",
     "PACKAGE_luci-app-modemband", "PACKAGE_modemband",
