@@ -10,6 +10,7 @@ cp "$repo_dir/feeds.conf.default" "$build_dir/feeds.conf.default"
 cp -a "$repo_dir/files" "$build_dir/"
 mkdir -p "$build_dir/package/swrt"
 cp -a "$repo_dir/package/wlmb-server" "$build_dir/package/swrt/"
+cp -a "$repo_dir/package/luci-lib-docker" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/luci-app-swrt-upgrade" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/swrt-pcat-manager" "$repo_dir/package/luci-app-swrt-power" "$build_dir/package/swrt/"
 find "$build_dir/files/etc/uci-defaults" "$build_dir/files/etc/hotplug.d" -type f -exec chmod 755 {} +
@@ -21,6 +22,7 @@ bash "$repo_dir/diy.sh"
 python3 "$repo_dir/scripts/patch-board-power.py" "$build_dir"
 ./scripts/feeds update -a
 python3 "$repo_dir/scripts/patch-feeds.py" "$build_dir"
+python3 "$repo_dir/scripts/patch-docker.py" "$build_dir"
 python3 "$repo_dir/scripts/patch-power-integration.py" "$build_dir"
 python3 "$repo_dir/scripts/patch-quickstart.py" "$build_dir"
 ./scripts/feeds update -i luci qmodem

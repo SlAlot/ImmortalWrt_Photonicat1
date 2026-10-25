@@ -1,0 +1,15 @@
+LuCI Docker log fixes from openwrt/luci PR #8977 (not merged upstream).
+https://github.com/openwrt/luci/pull/8977
+Author: jjm2473; original upstream license retained.
+
+--- a/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js
++++ b/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js
+@@ -1190,7 +1190,7 @@ return dm2.dv.extend({
+ 				]),
+ 				E('div', {
+ 					'id': 'container-logs-text',
+-					'style': 'width: 100%; font-family: monospace; padding: 10px; border: 1px solid #ccc; overflow: auto;',
++					'style': 'width: 100%; font-family: monospace; padding: 10px; border: 1px solid #ccc; overflow: auto; white-space: pre-wrap;',
+ 					'innerHTML': ''
+ 				})
+ 			]);

@@ -174,7 +174,9 @@ Wi-Fi 中继需自行配置，QModem 的 IPv4 拨号接口首次上线会加入 
 
 软件源默认使用南京大学 ImmortalWrt 镜像，iStore 兼容源独立保留。出现“软件源错误”时检查网络与软件源；首页会保留真实的连接失败提示。不要混装其他固件的 IPK 或内核驱动，详见[兼容性说明](docs/COMPATIBILITY.md)。
 
-Docker 已集成，根分区为 1 GiB。全新 SquashFS 安装默认使用原生 `/overlay/docker`；已有数据目录不会自动迁移。部署较大容器前建议使用稳定的独立 ext4 存储，升级固件前单独备份容器数据。DiskMan 入口为 **系统 → 磁盘管理**，进行分区、格式化前先备份数据。
+Docker / Compose 已集成，管理入口在左侧独立的 **Docker** 菜单。保留 iStore 容器应用使用的 Lua 接口，兼容原来的“服务 → Dockerman”链接。
+
+根分区为 1 GiB。全新 SquashFS 安装默认使用原生 `/overlay/docker`；已有容器数据和自定义目录不会自动迁移。大型 iStore 容器应用可能超过可用空间，应先在 Docker 配置中选择稳定的独立 ext4 存储；配置备份不包含镜像、容器和数据卷。DiskMan 入口为 **系统 → 磁盘管理**，分区、格式化前先备份。排查范围和限制见 [Docker 兼容性说明](docs/DOCKER-COMPATIBILITY.md)。
 
 ## 自动构建
 

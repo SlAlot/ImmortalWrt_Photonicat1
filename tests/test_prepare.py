@@ -8,6 +8,7 @@ import unittest
 from feed_fixtures import write_qmodem_runtime
 from test_quickstart import write_quickstart
 from test_board_power import write_board_power
+from test_docker import write_docker
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -80,6 +81,7 @@ class PreparePipelineTests(unittest.TestCase):
             path.write_text(content)
         write_qmodem_runtime(self.build)
         write_quickstart(self.build)
+        write_docker(self.build)
         (self.build / "scripts").mkdir()
         feeds = self.build / "scripts/feeds"
         feeds.write_text("""#!/bin/sh
@@ -133,6 +135,8 @@ echo '# configuration written to .config'
                          (self.repo / "patches/rockchip/950-swrt-photonicat-keep-aux-power.patch").read_bytes())
         menu = self.build / "package/swrt/luci-app-swrt-power/root/www/luci-static/resources/preload/swrt-menu.js"
         self.assertTrue(menu.is_file(), "The menu migration must be copied into the firmware package")
+        self.assertTrue((self.build / "package/swrt/luci-lib-docker/luasrc/docker.lua").is_file())
+        self.assertTrue((self.build / "package/swrt/luci-lib-docker/luasrc/model/docker.lua").is_file())
 
     def test_recursive_dependency_is_fatal_even_when_make_returns_zero(self):
         result = self.run_prepare("cycle")

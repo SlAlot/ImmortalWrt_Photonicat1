@@ -40,7 +40,9 @@ required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "kmod-mt7921e", "kmod-mt7921u", "kmod-mt7921s",
             "kmod-mt7921-firmware", "kmod-mt7922-firmware", "kmod-mt792x-usb",
             "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
-            "docker-compose", "luci-app-dockerman", "modem_scan"}
+            "docker-compose", "luci-app-dockerman", "luci-lib-docker",
+            "luci-lib-taskd", "luci-lib-xterm", "taskd", "containerd", "runc",
+            "kmod-veth", "mount-utils", "modem_scan"}
 assert required <= packages, f"Missing installed packages: {required - packages}"
 forbidden = {"pcat-mgr", "pcat-manager", "pcat-manager-v1", "kmod-photonicat-pm", "luci-app-modemband", "modemband", "luci-app-sms-tool-js",
              "luci-app-qmodem", "luci-app-qmodem-sms", "luci-app-qmodem-mwan",

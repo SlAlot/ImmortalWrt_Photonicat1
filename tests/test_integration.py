@@ -48,7 +48,9 @@ class ImagePublicationTests(unittest.TestCase):
             "kmod-mt7921e", "kmod-mt7921u", "kmod-mt7921s",
             "kmod-mt7921-firmware", "kmod-mt7922-firmware", "kmod-mt792x-usb",
             "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
-            "docker-compose", "luci-app-dockerman", "modem_scan")))
+            "docker-compose", "luci-app-dockerman", "luci-lib-docker",
+            "luci-lib-taskd", "luci-lib-xterm", "taskd", "containerd", "runc",
+            "kmod-veth", "mount-utils", "modem_scan")))
 
     def write_images(self):
         images = []
@@ -112,6 +114,17 @@ class ImagePublicationTests(unittest.TestCase):
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Missing installed packages", result.stderr)
+
+    def test_missing_docker_runtime_or_istore_library_blocks_release(self):
+        self.write_images()
+        original = self.manifest.read_text()
+        for name in ("containerd", "runc", "kmod-veth", "luci-lib-docker", "taskd"):
+            with self.subTest(package=name):
+                self.manifest.write_text(original.replace(name + " - 1.0", ""))
+                result = self.collect()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Missing installed packages", result.stderr)
+                self.assertIn(name, result.stderr)
 
     def test_missing_diskman_menu_dependency_blocks_release(self):
         # DiskMan hides its entire menu when parted, blkid or smartctl is absent.

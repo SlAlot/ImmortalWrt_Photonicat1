@@ -46,6 +46,8 @@ jobs:
           shellcheck -s sh -e SC2034,SC2317 package/swrt-pcat-manager/files/swrt-pcat-manager.init
           node tests/test_power_frontend.cjs
           python3 -m unittest discover -s tests -v
+          luac5.1 -p package/luci-lib-docker/luasrc/docker.lua
+          luac5.1 -p package/luci-lib-docker/luasrc/model/docker.lua
           git diff --check
   build:
     # Packaging-only maintenance can skip compilation while retaining checks.
