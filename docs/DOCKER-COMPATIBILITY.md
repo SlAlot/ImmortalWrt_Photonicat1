@@ -8,6 +8,7 @@
 4. **路由转发策略**：通过 UCI 支持 `ip_forward_no_drop`，默认写入 Docker 的 `ip-forward-no-drop: true`，让 Docker 保留系统原有转发策略。继续使用 firewall4 / iptables-nft，不更换整套防火墙，也不关闭流量卸载。
 5. **容器日志**：锁定的 JS 管理器未处理 Docker 的 stdout/stderr 多路复用帧。回移上游提出的日志解码、空白与换行显示修复，RPC 使用本地 Unix socket，不依赖开放 2375 端口。
 6. **存储**：继续使用既有的全新 SquashFS 安装修复，将未使用的默认数据目录放到原生 `/overlay/docker`，避免 OverlayFS 套 OverlayFS。已有数据不会自动搬移、清空或隐藏。
+7. **再次复查补充**：旧菜单隐藏标题后，旧根入口改为直接别名，避免 LuCI 无法选择首页。Lua 接口先拼接完整响应再解析 JSON / NDJSON，统一连接、发送和空响应的错误码，关闭连接失败的 socket，并正确处理跨 HTTP 数据块的日志帧及普通终端日志。JS 管理器的 RPC 与流式接口也改为拼接完整响应头和循环写出请求，流式接口补齐 HTTP 模块导入。
 
 所有 feed 修改先校验锁定源码的 SHA256；上游文件不匹配时停止准备，不做模糊套用。记录位于 Actions 诊断包中的 `docker-compat.json`。
 
@@ -19,7 +20,9 @@
 - 使用与固件锁定版本一致的 **Compose 5.1.4** 完成服务创建、启动、正常退出与清理，其官方二进制 SHA256 已核对。
 - 使用保留的两个 Lua 模块连接真实 Docker Unix socket，检查 `_ping`、`info`、容器列表，以及控制台使用的 `new()` / `containers:inspect()`；测试宿主使用 LuaSocket / UCI 适配层替代 OpenWrt 对应模块，不能代替目标固件模块装载验证。
 - 菜单、原有权限限制、日志二进制帧、feed 漂移拒绝和准备流程有回归测试；JS 和 ucode 的二进制日志解码均已执行验证，Shell 与 Lua 语法检查通过。
-- 32 项相关 Linux 测试通过；Windows 回归 96 项中 48 项通过、48 项因平台依赖跳过。未修改的 MCU C 测试未在本次隔离环境重复运行。
+- 再次复查的 34 项相关 Linux 测试通过；Windows 回归 98 项中 49 项通过、49 项因平台依赖跳过。完整 Linux 回归由 GitHub 检查执行。
+- 再次复查新增 13 组 Lua 传输边界用例，初始 10 组在修复前全部失败，修复后 13 组通过。另验证了 ucode RPC 在分段响应头、Content-Length 与 chunked JSON 下的实际执行结果，覆盖请求分次写入及旧菜单别名。
+- 修改后的 Lua API 再次连接真实 Docker 29.6.1，读取含 20 KB 元数据的容器响应并验证旧控制台模型；容器可写层、数据卷、bridge HTTP 与 DNS 测试再次通过。
 
 这不是 RK3568 真机或实际 iStore 应用安装验收。路由器目前无法接入；完整交叉编译、LuCI 页面加载、外接磁盘、蜂窝网络、多 WAN 与代理组合仍需目标固件验证。当前构建已取消，未因本次修改重新编译或发布。
 

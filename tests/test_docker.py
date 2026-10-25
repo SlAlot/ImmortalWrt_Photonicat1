@@ -18,6 +18,7 @@ def write_docker(root):
         "feeds/luci/" + patch.MENU: "menu.json",
         "feeds/luci/" + patch.COMMON: "common.js",
         "feeds/packages/" + patch.DAEMON: "dockerd.init",
+        "feeds/luci/" + patch.CONTROLLER: "docker_controller.uc",
         "feeds/luci/applications/luci-app-dockerman/htdocs/luci-static/resources/dockerman/api.js": "api.js",
         "feeds/luci/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js": "container.js",
         "feeds/luci/applications/luci-app-dockerman/root/usr/share/rpcd/ucode/docker_rpc.uc": "docker_rpc.uc",
@@ -40,6 +41,9 @@ class DockerCompatibilityTests(unittest.TestCase):
         patch.patch_docker(self.root)
         menu = json.loads((self.root / "feeds/luci" / patch.MENU).read_text())
         self.assertEqual(menu["admin/docker"]["title"], "Docker")
+        # LuCI firstchild ignores children without titles. A hidden old root
+        # therefore needs an alias instead of firstchild over hidden children.
+        self.assertEqual(menu[patch.OLD]["action"], {"type": "alias", "path": patch.NEW})
         for path, old in original.items():
             with self.subTest(path=path):
                 self.assertNotIn("title", menu[path])
@@ -70,6 +74,43 @@ class DockerCompatibilityTests(unittest.TestCase):
             patch.patch_docker(self.root)
         self.assertEqual(menu.read_bytes(), before)
 
+    @unittest.skipUnless(shutil.which("node"), "Node.js required")
+    def test_http_stream_helpers_handle_split_headers_and_partial_writes(self):
+        patch.patch_docker(self.root)
+        controller = (self.root / "feeds/luci" / patch.CONTROLLER).read_text()
+        backend = (self.root / "feeds/luci" / patch.RPC).read_text()
+        self.assertIn("import * as http from 'luci.http';", controller)
+        self.assertEqual(controller.count("response_buff = read_http_start(sock)"), 2)
+        self.assertEqual(backend.count("response_buff = read_http_start(sock)"), 1)
+        helpers = (ROOT / "patches/luci/docker-http-helpers.uc").read_text()
+        self.assertIn(helpers, controller)
+        self.assertIn(helpers, backend)
+        script = r'''
+const assert = require('node:assert/strict');
+const length = value => value.length;
+const substr = (value, offset) => value.slice(offset);
+const index = (value, pattern) => value.indexOf(pattern);
+const die = message => { throw new Error(message); };
+const BLOCKSIZE = 8192;
+const socket = { POLLIN: 1, poll: (timeout, fds) => fds[0].chunks?.length ? [1] : [] };
+''' + helpers + r'''
+const response = 'HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nDATA';
+const split = {chunks: ['HTTP/1.', '1 200 OK\r\nCont', 'ent-Length: 4\r\n\r', '\nDATA'], recv() {return this.chunks.shift();}};
+assert.equal(read_http_start(split), response);
+assert.equal(read_http_start({chunks:['partial'], recv(){return this.chunks.shift();}}), null);
+const excessive={chunks:new Array(10).fill('x'.repeat(8192)),recv(){return this.chunks.shift();}};
+assert.equal(read_http_start(excessive), null);
+let sent='';
+const writer={send(data){sent+=data.slice(0,2);return Math.min(2,data.length);},close(){throw new Error('unexpected close');}};
+assert.equal(send_all(writer,'payload'),true);
+assert.equal(sent,'payload');
+let closed=false;
+assert.throws(()=>send_all({send(){return 0;},close(){closed=true;}},'payload'), /write failed/);
+assert.equal(closed,true);
+'''
+        result = subprocess.run([shutil.which("node"), "-e", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_changed_integration_requires_clean_pinned_feeds(self):
         patch.patch_docker(self.root)
         audit = self.root / "swrt-metadata/docker-compat.json"
@@ -88,10 +129,11 @@ class DockerCompatibilityTests(unittest.TestCase):
         self.assertNotIn('uci set', daemon)
         self.assertIn('config_get extra_iptables_args "${cfg}"', daemon)
 
-    def test_legacy_library_is_exact_upstream_and_has_no_second_daemon(self):
+    def test_legacy_library_has_recorded_upstream_and_no_second_daemon(self):
         lib = ROOT / "package/luci-lib-docker"
-        self.assertEqual(hashlib.sha256((lib / "luasrc/docker.lua").read_bytes()).hexdigest(),
+        self.assertEqual(hashlib.sha256((ROOT / "tests/fixtures/docker/docker-legacy.lua").read_bytes()).hexdigest(),
                          "d6dd5087436fa259f5bf8965faf9d158af6c57294cfe1458523e1d7c5a667058")
+        self.assertIn("Copyright 2019 lisaac", (lib / "luasrc/docker.lua").read_text())
         self.assertEqual(hashlib.sha256((lib / "luasrc/model/docker.lua").read_bytes()).hexdigest(),
                          "bf0baf0207955f7656b3a15ad06139e610603d7fb3d803dab5eded217994b020")
         self.assertFalse((lib / "root/etc/init.d").exists())

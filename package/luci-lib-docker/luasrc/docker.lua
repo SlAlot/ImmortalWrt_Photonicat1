@@ -14,6 +14,31 @@ local urlencode = luci.util.urlencode or luci.http and luci.http.protocol and lu
 local json_stringify = jsonc.stringify
 local json_parse = jsonc.parse
 
+local header_value = function(headers, name)
+	for key, value in pairs(headers or {}) do
+		if key:lower() == name then
+			return type(value) == "table" and value[1] or value
+		end
+	end
+end
+
+local decode_json = function(chunks)
+	local text = table.concat(chunks)
+	if text == "" then return {} end
+	local value = json_parse(text)
+	if value ~= nil then return value end
+	-- Image pull progress is NDJSON; HTTP chunks are unrelated to records.
+	local records = {}
+	for line in text:gmatch("[^\r\n]+") do
+		if line:find("%S") then
+			value = json_parse(line)
+			if value == nil then return nil end
+			records[#records + 1] = value
+		end
+	end
+	return records
+end
+
 local chunksource = function(sock, buffer)
 	buffer = buffer or ""
 
@@ -81,16 +106,19 @@ local chunksink = function (sock)
 end
 
 local docker_stream_filter = function(buffer)
-	buffer = buffer or ""
-	if #buffer < 8 then
-		return ""
+	local parts, offset = {}, 1
+	local names = {[0]="stdin", [1]="stdout", [2]="stderr"}
+	while offset <= #buffer do
+		if #buffer - offset + 1 < 8 then return nil end
+		local kind = buffer:byte(offset)
+		if not names[kind] or buffer:sub(offset + 1, offset + 3) ~= "\0\0\0" then return nil end
+		local size = buffer:byte(offset + 4) * 16777216 + buffer:byte(offset + 5) * 65536
+			+ buffer:byte(offset + 6) * 256 + buffer:byte(offset + 7)
+		if offset + 7 + size > #buffer then return nil end
+		parts[#parts + 1] = names[kind] .. ": " .. buffer:sub(offset + 8, offset + 7 + size)
+		offset = offset + 8 + size
 	end
-	local stream_type = ((string.byte(buffer, 1) == 1) and "stdout") or ((string.byte(buffer, 1) == 2) and "stderr") or ((string.byte(buffer, 1) == 0) and "stdin") or "stream_err"
-	local valid_length = tonumber(string.byte(buffer, 5)) * 256 * 256 * 256 + tonumber(string.byte(buffer, 6)) * 256 * 256 + tonumber(string.byte(buffer, 7)) * 256 + tonumber(string.byte(buffer, 8))
-	if valid_length > #buffer + 8 then
-		return ""
-	end
-	return stream_type .. ": " .. string.sub(buffer, 9, valid_length + 8)
+	return table.concat(parts)
 end
 
 local open_socket = function(req_options)
@@ -100,7 +128,9 @@ local open_socket = function(req_options)
 	end
 	if req_options.socket_path then
 		socket = nixio.socket("unix", "stream")
+		if not socket then return nil end
 		if socket:connect(req_options.socket_path) ~= true then
+			socket:close()
 			return nil
 		end
 	elseif req_options.host and req_options.port then
@@ -114,7 +144,9 @@ local open_socket = function(req_options)
 end
 
 local send_http_socket = function(options, docker_socket, req_header, req_body, callback)
-	if docker_socket:send(req_header) == 0 then
+	local written = docker_socket:writeall(req_header)
+	if not written or written == 0 then
+		docker_socket:close()
 		return {
 			headers={
 				code=498,
@@ -135,15 +167,20 @@ local send_http_socket = function(options, docker_socket, req_header, req_body, 
 		req_body(docker_socket)
 	elseif req_body and type(req_body) == "table" then
 		-- json
-		docker_socket:send(json_stringify(req_body))
+		written = docker_socket:writeall(json_stringify(req_body))
 		if options.debug then
 			io.popen("echo '".. json_stringify(req_body) .. "' >> " .. options.debug_path)
 		end
 	elseif req_body then
-		docker_socket:send(req_body)
+		written = docker_socket:writeall(req_body)
 		if options.debug then
 			io.popen("echo '".. req_body .. "' >> " .. options.debug_path)
 		end
+	end
+
+	if req_body and type(req_body) ~= "function" and (not written or (written == 0 and req_body ~= "")) then
+		docker_socket:close()
+		return {code=498, headers={code=498}, body={message="can't send request body to socket"}}
 	end
 
 	local linesrc = docker_socket:linesource()
@@ -199,7 +236,7 @@ local send_http_socket = function(options, docker_socket, req_header, req_body, 
 	response.body = {}
 
 	if type(callback) ~= "function" then
-		if response.headers["Transfer-Encoding"] == "chunked" then
+		if (header_value(response.headers, "transfer-encoding") or ""):lower() == "chunked" then
 			local source = chunksource(docker_socket, body_buffer)
 			code = ltn12.pump.all(source, (ltn12.sink.table(response.body))) and response.code or 555
 			response.code = code
@@ -209,7 +246,7 @@ local send_http_socket = function(options, docker_socket, req_header, req_body, 
 			response.code = code
 		end
 	else
-		if response.headers["Transfer-Encoding"] == "chunked" then
+		if (header_value(response.headers, "transfer-encoding") or ""):lower() == "chunked" then
 			local source = chunksource(docker_socket, body_buffer)
 			callback(response, source)
 		else
@@ -287,10 +324,11 @@ local call_docker = function(options, http_method, api_group, api_action, name_o
 	local req_body = request and request.body or nil
 	local docker_socket = open_socket(req_options)
 
+	local response
 	if docker_socket then
-		return send_http_socket(options, docker_socket, req_header, req_body, callback)
+		response = send_http_socket(options, docker_socket, req_header, req_body, callback)
 	else
-		return {
+		response = {
 			headers = {
 				code=497,
 				message="bad socket path or host",
@@ -301,6 +339,19 @@ local call_docker = function(options, http_method, api_group, api_action, name_o
 			}
 		}
 	end
+	response.code = response.code or (response.headers and response.headers.code) or 500
+	local media_type = (header_value(response.headers, "content-type") or ""):lower():match("^%s*([^;%s]+)")
+	if media_type == "application/json" and type(response.body) == "table"
+		and (#response.body == 0 or type(response.body[1]) == "string") then
+		local decoded = decode_json(response.body)
+		if decoded == nil then
+			response.code = 555
+			response.body = {message="Invalid JSON response from Docker"}
+		else
+			response.body = decoded
+		end
+	end
+	return response
 end
 
 local gen_api = function(_table, http_method, api_group, api_action)
@@ -338,7 +389,6 @@ local gen_api = function(_table, http_method, api_group, api_action)
 				name_or_id = nil
 			end
 		elseif api_action == "logs" then
-			local body_buffer = ""
 			local response = call_docker(self.options,
 				http_method,
 				api_group,
@@ -347,27 +397,25 @@ local gen_api = function(_table, http_method, api_group, api_action)
 				request,
 				callback)
 			if response.code >= 200 and response.code < 300 then
-				for i, v in ipairs(response.body) do
-					body_buffer = body_buffer .. docker_stream_filter(response.body[i])
+				local buffer = table.concat(response.body)
+				local media_type = (header_value(response.headers, "content-type") or ""):lower()
+				local framed = media_type:find("application/vnd.docker.multiplexed-stream", 1, true)
+					or (#buffer >= 8 and buffer:byte(1) <= 2 and buffer:sub(2, 4) == "\0\0\0")
+				if framed then
+					response.body = docker_stream_filter(buffer)
+					if not response.body then
+						response.code = 555
+						response.body = {message="Incomplete Docker log frame"}
+					end
+				else
+					response.body = buffer
 				end
-				response.body = body_buffer
 			end
 			return response
 		end
 
 		local response = call_docker(self.options, http_method, api_group, _api_action, name_or_id, request, callback)
 
-		if response.headers and response.headers["Content-Type"] == "application/json" then
-			if #response.body == 1 then
-				response.body = json_parse(response.body[1])
-			else
-				local tmp = {}
-				for _, v in ipairs(response.body) do
-					tmp[#tmp+1] = json_parse(v)
-				end
-				response.body = tmp
-			end
-		end
 		return response
 	end
 

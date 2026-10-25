@@ -4,5 +4,6 @@
   "feeds/luci/applications/luci-app-dockerman/htdocs/luci-static/resources/dockerman/api.js": "fef49f569d3cf8ef1d255f81b74ff880c2ec18ff435047f7e335944ff59590e6",
   "feeds/luci/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js": "1420e19161832b73a30e74c276b043fa55bdfc201e97129139f18ee788e61fd7",
   "feeds/luci/applications/luci-app-dockerman/root/usr/share/rpcd/ucode/docker_rpc.uc": "f9c8482fb58d6d56d9b749f9206513b24c169fd8cb59e0619a29b7f2a2b55381",
-  "feeds/packages/utils/dockerd/files/dockerd.init": "36573a8260be9392a9adc1e19a5874480a133681bcfcf08b41a214d2ffbad49b"
+  "feeds/packages/utils/dockerd/files/dockerd.init": "36573a8260be9392a9adc1e19a5874480a133681bcfcf08b41a214d2ffbad49b",
+  "feeds/luci/applications/luci-app-dockerman/ucode/controller/docker.uc": "efe000bce54b6c946a20a7ee0950075bdd555ec92d3158dffc150ec0b4a53981"
 }

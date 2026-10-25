@@ -27,7 +27,7 @@ jobs:
       - name: Check scripts and integration invariants
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck lua5.1 jq libglib2.0-dev libjson-c-dev pkgconf device-tree-compiler
+          sudo apt-get install -y shellcheck lua5.1 lua-cjson jq libglib2.0-dev libjson-c-dev pkgconf device-tree-compiler
           bash -n scripts/prepare.sh diy.sh
           shellcheck scripts/prepare.sh diy.sh
           shellcheck -s sh -e SC1091 files/etc/uci-defaults/99-swrt files/etc/hotplug.d/iface/95-swrt-qmodem-mwan

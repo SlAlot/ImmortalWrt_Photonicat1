@@ -10,6 +10,8 @@ REPO = Path(__file__).resolve().parents[1]
 MENU = "applications/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json"
 COMMON = "applications/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js"
 DAEMON = "utils/dockerd/files/dockerd.init"
+RPC = "applications/luci-app-dockerman/root/usr/share/rpcd/ucode/docker_rpc.uc"
+CONTROLLER = "applications/luci-app-dockerman/ucode/controller/docker.uc"
 OLD = "admin/services/dockerman"
 NEW = "admin/docker"
 
@@ -17,6 +19,7 @@ NEW = "admin/docker"
 def integration_revision():
     inputs = [Path(__file__), REPO / "scripts/docker-source-hashes.json",
               *(REPO / f"patches/luci/docker-logs-{n}.patch" for n in (8976, 8977))]
+    inputs.append(REPO / "patches/luci/docker-http-helpers.uc")
     return hashlib.sha256(b"".join(path.read_bytes() for path in inputs)).hexdigest()
 
 
@@ -54,6 +57,8 @@ def transform_menu(text):
         legacy = dict(entry)
         legacy.pop("title", None)
         legacy.pop("title_hide", None)
+        if path == OLD:
+            legacy["action"] = {"type": "alias", "path": NEW}
         result[path] = legacy
     return json.dumps(result, ensure_ascii=False, indent=2) + "\n"
 
@@ -64,7 +69,7 @@ def patch_docker(root):
     packages = root / "feeds/packages"
     files = {luci / MENU: transform_menu, luci / COMMON: lambda text: text.replace(
         "L.url('admin/services/dockerman')", "L.url('admin/docker')"),
-        packages / DAEMON: patch_daemon}
+        packages / DAEMON: patch_daemon, luci / CONTROLLER: patch_controller}
     for number in (8976, 8977):
         patch = (REPO / f"patches/luci/docker-logs-{number}.patch").read_text()
         for part in patch.split("--- a/")[1:]:
@@ -72,6 +77,8 @@ def patch_docker(root):
             path = luci / name
             previous = files.get(path, lambda text: text)
             files[path] = lambda text, previous=previous, body=body: apply_hunks(previous(text), body)
+    previous_rpc = files[luci / RPC]
+    files[luci / RPC] = lambda text: patch_http_transport(previous_rpc(text))
 
     # Reject drift before writing any feed file. Reapplication is accepted
     # only when every patched file still has its recorded, reviewed hash.
@@ -122,6 +129,24 @@ def patch_daemon(text):
             raise ValueError("Docker init context changed")
         text = text.replace(old, new, 1)
     return text
+
+
+def patch_http_transport(text):
+    marker = "const CLIENT_VER = '1';\n"
+    if text.count(marker) != 1:
+        raise ValueError("Docker transport constants changed")
+    text = text.replace("sock.send(", "send_all(sock, ")
+    text = text.replace("response_buff = sock.recv(BLOCKSIZE);", "response_buff = read_http_start(sock);")
+    helpers = (REPO / "patches/luci/docker-http-helpers.uc").read_text()
+    return text.replace(marker, marker + "\n" + helpers + "\n", 1)
+
+
+def patch_controller(text):
+    marker = "import { stdout } from 'fs';\n"
+    if text.count(marker) != 1:
+        raise ValueError("Docker streaming imports changed")
+    text = text.replace(marker, marker + "import * as http from 'luci.http';\n", 1)
+    return patch_http_transport(text)
 
 
 if __name__ == "__main__":
