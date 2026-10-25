@@ -6,6 +6,11 @@ on:
         description: '指定版本（例如 1.5）；留空自动递增，必须高于已有发布'
         required: false
         type: string
+      publish_release:
+        description: '检查成功后发布到 Releases；关闭则仅保存验证固件附件'
+        required: true
+        type: boolean
+        default: true
   push:
     branches: [main]
     paths: ['.config', 'feeds.conf.default', 'sources.lock.json', 'diy.sh', 'files/**', 'package/**', 'patches/**', 'scripts/**', 'tests/**', '.github/workflows/**']
@@ -43,6 +48,8 @@ jobs:
           sh -n package/luci-app-swrt-power/root/usr/libexec/rpcd/luci.swrt_power
           shellcheck -s sh package/luci-app-swrt-power/root/usr/libexec/rpcd/luci.swrt_power
           sh -n package/swrt-pcat-manager/files/swrt-pcat-manager.init
+          sh -n package/swrt-pcat-manager/files/swrt-power-migrate
+          shellcheck -s sh package/swrt-pcat-manager/files/swrt-power-migrate
           shellcheck -s sh -e SC2034,SC2317 package/swrt-pcat-manager/files/swrt-pcat-manager.init
           node tests/test_power_frontend.cjs
           python3 -m unittest discover -s tests -v
@@ -132,7 +139,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Publish verified firmware
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.publish_release)
         env:
           GH_TOKEN: ${{ github.token }}
           FIRMWARE_VERSION: ${{ steps.release.outputs.version }}

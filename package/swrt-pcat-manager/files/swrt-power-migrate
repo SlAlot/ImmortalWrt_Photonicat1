@@ -1,0 +1,14 @@
+#!/bin/sh
+# Only replace the exact previous factory file, never user voltage settings.
+set -eu
+config=/etc/pcat-manager.conf
+factory=/usr/share/swrt-pcat-manager
+cmp -s "$config" "$factory/legacy-v1.conf" || exit 0
+backup="${config}.pre-kernel-backend"
+[ -e "$backup" ] || cp -p "$config" "$backup"
+temporary="${config}.swrt-$$"
+trap 'rm -f "$temporary"' EXIT HUP INT TERM
+umask 077
+cp "$factory/official-v1.conf" "$temporary"
+mv "$temporary" "$config"
+logger -t swrt-power 'Replaced the unchanged legacy factory profile with official MCU defaults; backup retained'

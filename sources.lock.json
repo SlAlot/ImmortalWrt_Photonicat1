@@ -62,14 +62,20 @@
   ],
   "photonicat_pmu": {
     "repository": "https://github.com/photonicat/rockchip_rk3568_pcat_manager",
-    "branch": "v1",
-    "commit": "6f16e4ab4fbba220af932e02e5ef8f1a63f4bafd",
-    "sha256": "d79f13b0151b5a07ef31795899bbf5a4a9e2ee66327a9d8347290aa12574fe3a"
+    "branch": "master",
+    "commit": "0e61a4abf35c423420310311f1b2b059deba0cac",
+    "sha256": "9ea7890bba5a36d52104e9fa873c29dc7389303f3092d8b7bf6d42d720017b63"
   },
   "wlmb": {
     "version": "1.1.3",
     "asset": "wlmb-server-1.1.3-aarch64_generic.ipk",
     "sha256": "2d694ca84db172491fb3bd48b99f877b12296dfa13e9ce210a6769d4d4174b2f",
     "url": "https://github.com/SlAlot/wlmb-server/releases/download/v1.1.3"
+  },
+  "photonicat_kernel_power": {
+    "repository": "https://github.com/photonicat/photonicat_openwrt",
+    "commit": "119964435eb7bc6384eed8ecee7bd7104b6e8ee2",
+    "path": "target/linux/rockchip/patches-6.12/990-photonicat-pm-add-driver.patch",
+    "sha256": "40a5a540f6b3169cf590cbf246548ea78cdbf287e61a1c764c242f0d1a86ff99"
   }
 }

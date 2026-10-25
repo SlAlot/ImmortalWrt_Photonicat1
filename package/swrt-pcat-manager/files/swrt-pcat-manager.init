@@ -1,43 +1,26 @@
 #!/bin/sh /etc/rc.common
-START=45
+START=12
 STOP=89
 USE_PROCD=1
 
 start_service() {
     [ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = 'ariaboard,photonicat' ] || return 1
-    if [ -e /dev/pcat-pm-ctl ]; then
-        logger -t swrt-power 'Kernel MCU interface is active; refusing raw UART backend'
-        return 1
-    fi
-    if [ ! -c /dev/ttyS4 ]; then
-        logger -t swrt-power 'MCU UART /dev/ttyS4 is unavailable; power service cannot start'
+    if [ ! -c /dev/pcat-pm-ctl ] || [ ! -r /sys/class/power_supply/battery/voltage_now ]; then
+        logger -t swrt-power 'Official kernel power interface is unavailable; refusing legacy UART fallback'
         return 1
     fi
     if pidof pcat-mgr pcat-manager >/dev/null 2>&1; then
-        logger -t swrt-power 'Another MCU owner is active; refusing to start'
+        logger -t swrt-power 'Another power manager is active; refusing a second controller'
         return 1
     fi
+    /usr/libexec/swrt-power-migrate || return 1
     procd_open_instance
     procd_set_param command /usr/sbin/swrt-pcat-manager --distro
     power_timezone="$(cat /etc/TZ 2>/dev/null || true)"
     procd_set_param env "TZ=${power_timezone:-UTC}"
-    # Recover before the official five-second MCU watchdog expires.
-    procd_set_param respawn 3600 1 5
+    # The official kernel driver maintains the MCU watchdog independently.
+    procd_set_param respawn 3600 2 5
     procd_set_param stdout 1
     procd_set_param stderr 1
     procd_close_instance
-}
-
-stop_service() {
-    # Ordinary service restarts use upstream's watchdog-disarm signal first.
-    # System shutdown retains the official PMU shutdown/reboot handshake.
-    if [ "${SWRT_SYSTEM_SHUTDOWN:-0}" = 0 ]; then
-        procd_send_signal swrt-pcat-manager '*' USR1
-        sleep 2
-    fi
-}
-
-shutdown() {
-    SWRT_SYSTEM_SHUTDOWN=1
-    stop
 }

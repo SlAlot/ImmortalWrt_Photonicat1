@@ -150,9 +150,9 @@ echo '# configuration written to .config'
         self.assertIn("Missing PACKAGE_tom_modem", (self.repo / "prepare.log").read_text())
         self.assertFalse((self.build / "swrt-metadata/config.resolved").exists())
 
-    def test_customization_cannot_enable_a_second_mcu_owner_after_guard(self):
-        (self.repo / "diy.sh").write_text("#!/bin/sh\nprintf 'CONFIG_PHOTONICAT_PM=y\\n' > target/linux/rockchip/config-6.12\n")
+    def test_customization_cannot_replace_the_official_power_driver(self):
+        (self.repo / "diy.sh").write_text("#!/bin/sh\nprintf 'changed driver\\n' > target/linux/rockchip/patches-6.12/990-photonicat-pm-add-driver.patch\n")
         result = self.run_prepare("success")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Kernel MCU owner conflicts", (self.repo / "prepare.log").read_text())
+        self.assertIn("refusing to overwrite", (self.repo / "prepare.log").read_text())
         self.assertFalse((self.build / "swrt-metadata/config.resolved").exists())

@@ -1,13 +1,102 @@
-Preserve the Photonicat 1 auxiliary rail during regulator probing.
-Keep runtime USB power control and the existing supply ordering intact.
-
 --- a/arch/arm64/boot/dts/rockchip/rk3568-photonicat.dts
 +++ b/arch/arm64/boot/dts/rockchip/rk3568-photonicat.dts
-@@ -147,6 +147,7 @@
- 		pinctrl-names = "default";
- 		pinctrl-0 = <&vcc5v0_boost_en>;
- 		regulator-name = "vcc5v0_boost";
-+		regulator-boot-on;
- 		regulator-min-microvolt = <5000000>;
- 		regulator-max-microvolt = <5000000>;
- 		vin-supply = <&vcc5v0_usb30_otg0>;
+@@ -24,26 +24,19 @@
+ 		device-chemistry = "lithium-ion";
+ 		charge-full-design-microamp-hours = <6800000>;
+ 		energy-full-design-microwatt-hours = <25000000>;
+-		voltage-max-design-microvolt = <4200000>;
+-		voltage-min-design-microvolt = <3400000>;
+-
+-		ocv-capacity-celsius = <25>;
+-		ocv-capacity-table-0 =  <4100000 100>, <4040000 90>,
+-					<3980000 80>, <3920000 70>,
+-					<3870000 60>, <3820000 50>,
+-					<3790000 40>, <3770000 30>,
+-					<3740000 20>, <3680000 10>,
++		voltage-min-design-microvolt = <3560000>;
++		voltage-max-design-microvolt = <4100000>;
++		ocv-capacity-celsius = <20>;
++		ocv-capacity-table-0 =  <4100000 100>, <4070000 95>, <4040000 90>, <4010000 85>,
++					<3980000 80>, <3950000 75>, <3920000 70>, <3895000 65>,
++					<3870000 60>, <3845000 55>, <3820000 50>, <3805000 45>,
++					<3790000 40>, <3780000 35>, <3770000 30>, <3755000 25>,
++					<3740000 20>, <3710000 15>, <3680000 10>, <3565000 5>,
+ 					<3450000 0>;
+ 	};
+ 
+ 	chosen: chosen {
+ 		stdout-path = "serial2:1500000n8";
+-	};
+-
+-	gpio-poweroff {
+-		compatible = "gpio-poweroff";
+-		gpios = <&gpio1 RK_PB2 GPIO_ACTIVE_LOW>;
+-		timeout-ms = <3000>;
+ 	};
+ 
+ 	hdmi_con: hdmi-con {
+@@ -137,19 +130,6 @@
+ 		regulator-min-microvolt = <3400000>;
+ 		regulator-max-microvolt = <3400000>;
+ 		vin-supply = <&vccin_5v>;
+-	};
+-
+-	/* actually fed by vccin_5v, dependent on vcc5v0_usb30_otg0 */
+-	vcc5v0_boost: regulator-vcc5v0-boost {
+-		compatible = "regulator-fixed";
+-		enable-active-high;
+-		gpio = <&gpio4 RK_PD2 GPIO_ACTIVE_HIGH>;
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&vcc5v0_boost_en>;
+-		regulator-name = "vcc5v0_boost";
+-		regulator-min-microvolt = <5000000>;
+-		regulator-max-microvolt = <5000000>;
+-		vin-supply = <&vcc5v0_usb30_otg0>;
+ 	};
+ 
+ 	vcc5v0_usb30_otg0: regulator-vcc5v0-usb30-otg0 {
+@@ -573,6 +553,22 @@
+ &uart4 {
+ 	dma-names = "tx", "rx";
+ 	status = "okay";
++
++	pcat-pm {
++		compatible = "photonicat-pm";
++		baudrate = <115200>;
++		pm-version = <1>;
++		power-gpio = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>;
++		force-poweroff-timeout = <60>;
++
++		charger {
++			monitored-battery = <&battery>;
++		};
++
++		fan {
++
++		};
++	};
+ };
+ 
+ /* M.2 E-Key for USB Bluetooth */
+@@ -606,7 +602,7 @@
+ };
+ 
+ &usb2phy0_otg {
+-	phy-supply = <&vcc5v0_boost>;
++	phy-supply = <&vcc5v0_usb30_otg0>;
+ 	status = "okay";
+ };
+ 
+@@ -644,3 +640,12 @@
+ &xpcs {
+ 	status = "okay";
+ };
++
++&gpio4 {
++	aux-pwren {
++		gpio-hog;
++		gpios = <RK_PD2 GPIO_ACTIVE_HIGH>;
++		output-high;
++		line-name = "aux-pwren";
++	};
++};

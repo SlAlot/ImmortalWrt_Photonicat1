@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=swrt-pcat-manager
-PKG_VERSION:=2025.08.18
-PKG_RELEASE:=3
-PCAT_COMMIT:=6f16e4ab4fbba220af932e02e5ef8f1a63f4bafd
+PKG_VERSION:=2026.10.25
+PKG_RELEASE:=1
+PCAT_COMMIT:=0e61a4abf35c423420310311f1b2b059deba0cac
 PKG_SOURCE:=$(PCAT_COMMIT).tar.gz
 PKG_SOURCE_URL:=https://github.com/photonicat/rockchip_rk3568_pcat_manager/archive
-PKG_HASH:=d79f13b0151b5a07ef31795899bbf5a4a9e2ee66327a9d8347290aa12574fe3a
+PKG_HASH:=9ea7890bba5a36d52104e9fa873c29dc7389303f3092d8b7bf6d42d720017b63
 PKG_BUILD_DIR:=$(BUILD_DIR)/rockchip_rk3568_pcat_manager-$(PCAT_COMMIT)
 PKG_LICENSE:=GPL-3.0-only AND AGPL-3.0-only
 PKG_INSTALL:=1
@@ -20,8 +20,8 @@ define Package/swrt-pcat-manager
   CATEGORY:=Utilities
   TITLE:=SWRT Photonicat 1 power service
   DEPENDS:=@TARGET_rockchip_armv8 +glib2 +libjson-c
-  CONFLICTS:=pcat-mgr pcat-manager pcat-manager-v1 kmod-photonicat-pm
-  URL:=https://github.com/photonicat/rockchip_rk3568_pcat_manager/tree/v1
+  CONFLICTS:=pcat-mgr pcat-manager pcat-manager-v1
+  URL:=https://github.com/photonicat/rockchip_rk3568_pcat_manager/tree/master
 endef
 
 define Package/swrt-pcat-manager/conffiles
@@ -40,7 +40,10 @@ define Package/swrt-pcat-manager/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/pcat-manager $(1)/usr/sbin/swrt-pcat-manager
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/swrt-power-client $(1)/usr/libexec/swrt-power
 	$(INSTALL_BIN) ./files/swrt-pcat-manager.init $(1)/etc/init.d/swrt-pcat-manager
+	$(INSTALL_BIN) ./files/swrt-power-migrate $(1)/usr/libexec/swrt-power-migrate
 	$(INSTALL_CONF) $(PKG_BUILD_DIR)/conf/pcat-manager.conf.sample $(1)/etc/pcat-manager.conf
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/conf/pcat-manager.conf.sample $(1)/usr/share/swrt-pcat-manager/official-v1.conf
+	$(INSTALL_DATA) ./files/legacy-v1.conf $(1)/usr/share/swrt-pcat-manager/legacy-v1.conf
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/LICENSE $(1)/usr/share/swrt-pcat-manager/LICENSE.upstream
 endef
 

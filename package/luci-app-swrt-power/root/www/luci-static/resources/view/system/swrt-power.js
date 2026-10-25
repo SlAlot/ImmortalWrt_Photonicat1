@@ -95,8 +95,9 @@ return view.extend({
             var current = plan(data);
             active.textContent = '当前：' + { manual: '手动模式', ups: '车载 / UPS 模式', daily: '每日定时模式', custom: '自定义计划' }[current];
             if (current === 'ups') {
-                details.textContent = battery.external_power ? '正在监测外部供电，断电后延时 ' + Math.ceil(data.car.timeout / 60) + ' 分钟关机。' :
-                    (data.car.armed && data.car.countdown >= 0 ? '电池供电中，约 ' + data.car.countdown + ' 秒后关机。' : '等待接入外部电源后开始监测。');
+                details.textContent = !data.car.armed ? '策略已保存；请关机后由充电器自动开机，再开始断电监测。' :
+                    battery.external_power ? '正在监测外部供电，断电后延时 ' + Math.ceil(data.car.timeout / 60) + ' 分钟关机。' :
+                    (data.car.countdown >= 0 ? '电池供电中，约 ' + data.car.countdown + ' 秒后关机。' : '正在确认断电状态。');
             } else if (current === 'daily') {
                 details.textContent = '每日 ' + timeOf(data.events.find(function(row) { return row.action === 1; })) + ' 开机，' +
                     timeOf(data.events.find(function(row) { return row.action === 0; })) + ' 关机（设备本地时间）。';
@@ -159,7 +160,7 @@ return view.extend({
                     .finally(function() { saving = false; return fetchStatus(false); });
             });
             var description = selected === 'manual' ? '关闭车载 / UPS 与定时计划，恢复手动模式。' : selected === 'ups' ?
-                '断开外部供电后延时 ' + minutes + ' 分钟关机；恢复外部供电后取消倒计时。' : '每日 ' + on + ' 开机，' + off + ' 关机，按设备本地时间执行。';
+                '由充电器自动开机后，断开外部供电延时 ' + minutes + ' 分钟关机；恢复外部供电后取消倒计时。' : '每日 ' + on + ' 开机，' + off + ' 关机，按设备本地时间执行。';
             ui.showModal('确认电源策略', [ E('p', {}, description),
                 E('p', {}, '新策略会替换原有计划。自动关机会中断供网，首次测试请确认可重新接入设备。'),
                 E('label', { 'class': 'swrt-power-confirm' }, [ acknowledged, ' 我已确认设置，并了解设备可能自动关机。' ]),

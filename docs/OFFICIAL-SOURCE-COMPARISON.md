@@ -1,91 +1,60 @@
-# 官方 OpenWrt 源码对照
+# 官方电源方案对照与移植
 
-核对日期：2026-10-25。对象：光影猫一代 / RK3568。
-本记录和新增补丁完成于 v1.7 发布之后，纳入 v1.8 源码。ARM 固件构建与附件校验以对应 Actions 结果为准；**实际充电故障未确认解决，尚未刷写本次修正做真机验证**。
+核对日期：2026-10-25。适用光影猫一代 / RK3568。
 
-## 仓库身份与公开范围
+## 现场基准
 
-[官网源码入口](https://photonicat.com/downloads)直接链接到
-[photonicat/photonicat_openwrt](https://github.com/photonicat/photonicat_openwrt)。
-其 `master` 同时支持一代和二代；本次固定检查提交
-`119964435eb7bc6384eed8ecee7bd7104b6e8ee2`，源码归档 SHA256 为
-`6303d9707ab7f7be3b30f05878928b118ce7489983092b8fb4c1cc39d1df0464`。
+SSH 接入的设备运行官方 photonicatWrt 26.10.0、Linux 6.12.103、pcat-manager 2.0.0-r65，
+硬件版本 NT2109A3，MCU 固件 RA2E1221213000。当前电源由内核 `photonicat-pm` 接管，
+提供 `/dev/pcat-pm-ctl`、power_supply 和 RTC，后台不直接占用 `/dev/ttyS4`。
 
-这是官方 OpenWrt 构建树，但目前不能视为所有组件均可匿名取得、能完整复现现用镜像的一套源码：
+官方源码入口：[photonicat/photonicat_openwrt](https://github.com/photonicat/photonicat_openwrt)。
+该构建树同时包含一代与二代；本次固定为 `119964435eb7bc6384eed8ecee7bd7104b6e8ee2`。
 
-| 部分 | 本次确认 |
-| --- | --- |
-| 构建系统、一代设备树、内核电源驱动 | GitHub 公开，可以逐项检查 |
-| 一代配置 | `configs/photonicat_base_defconfig` 指定 `photonicatWrt 26.10.0`，与此前真机系统名称、版本及芯片系列相符 |
-| 新版 `pcat-manager` | 公开的[构建配方](https://github.com/photonicat/photonicat_openwrt/blob/119964435eb7bc6384eed8ecee7bd7104b6e8ee2/package/pcat/pcat-manager/Makefile)为 `2.0.0-r64`，实现源码指向 `git.g77k.com/supercatexpert/pcat-manager.git` 的 SSH 地址。匿名网页访问跳到登录页，Git 拉取入口返回 HTTP 401 |
-| 管理器另一个公开分支 | [公开 master](https://github.com/photonicat/rockchip_rk3568_pcat_manager/tree/0e61a4abf35c423420310311f1b2b059deba0cac)包含新版 serdev、sysfs 与充电上限代码，但 README 明确面向二代、要求一代使用 v1。其提交为 `0e61a4a`，不是生产配方指定的 `800104f`；后者在该 GitHub 仓库也检索不到。因此不能说所有新版代码都未公开，但仍缺少可对应现用一代镜像的完整修订 |
-| `pcat-manager-web` | 公开的[配方](https://github.com/photonicat/photonicat_openwrt/blob/119964435eb7bc6384eed8ecee7bd7104b6e8ee2/package/pcat/pcat-manager-web/Makefile)也引用另一处 SSH 源码，匿名网页访问需要登录；这个构建树不包含其完整实现 |
-| 现用官方镜像 | 此前真机报告 `r7921-4526447cab`、`pcat-manager 2.0.0-r65`。在本 GitHub 仓库检索不到该构建提交，公开配方的 release 也不同，不能宣称与现用镜像逐字一致 |
-| 其他依赖 | feeds 跟踪分支而非完整提交锁；部分固件以二进制提供。本仓库没有包含板载 MCU 的完整实现，不能仅凭主仓库公开判断全部系统已公开 |
+## 已核实的差异
 
-## 电源实现的实际区别
+| 项目 | 现场官方系统 | 原 SWRT 方案 |
+| --- | --- | --- |
+| MCU 串口所有者 | 内核 serdev 驱动 | 旧 v1 用户态后台 |
+| 心跳与看门狗 | 内核每秒维护，默认 10 秒 | 用户态维护，默认 5 秒 |
+| 主电源及系统关机 | 官方内核驱动持有 GPIO1_B2 并完成握手 | gpio-poweroff 与旧用户态流程 |
+| 辅助电源 | 官方 aux-pwren gpio-hog 持续置高 GPIO4_D2 | USB 消费者控制的 regulator |
+| 启动时命令 23 的九个电压参数 | 全部为 0，保留 MCU 默认值 | 满电判断参数为 4100，其余初始为 0 |
+| 模组保护默认配置 | General / LTE / 5G 均为 0 | 5G 默认覆盖为 3600 |
+| 状态来源 | 官方内核 power_supply | 用户态解析 UART 上报 |
 
-当前官方构建使用
-[`990-photonicat-pm-add-driver.patch`](https://github.com/photonicat/photonicat_openwrt/blob/119964435eb7bc6384eed8ecee7bd7104b6e8ee2/target/linux/rockchip/patches-6.12/990-photonicat-pm-add-driver.patch)
-和内建 `CONFIG_PHOTONICAT_PM=y`。内核通过 serdev 管理 UART4，对用户态提供
-`/dev/pcat-pm-ctl` 和 power_supply / RTC 接口；此前真机也读到了这些设备。
-SWRT 使用公开旧 v1 电源代码，直接管理 `/dev/ttyS4`，不是当前官方新版后台。
+通过隔离的挂载、PID、网络环境，把真机官方后台和已发布 SWRT 后台接到模拟 MCU，
+捕获了实际启动指令。没有把模拟串口绑定到真实 MCU。九项参数的差异来自实际执行结果，
+不是仅比较配置文本；它是实现差异，**不能单凭这一项断定已经找到不充电的唯一原因**。
 
-两套接口不能通过替换一个设备路径来混用：内核过滤心跳、状态应答、看门狗等命令，并重写转发帧序号。
-直接改路径或同时加载两套管理器会破坏旧后台的确认和关机逻辑。此次没有迁移 MCU 后端或引入需认证获取的代码。
-官方公开驱动的默认看门狗为 10 秒、由内核维护；旧 v1 后台为 5 秒、由用户态维护。
-这是服务架构差异，不能单凭这个差异认定已经找到充电故障根因。
+## 本次对应修改
 
-另外检查了上述公开 master 的 `src/pmu-manager.c`：它读取 sysfs 电量，通过 `/dev/pcat-pm-ctl` 发扩展命令，
-初始化时会查询二代充电上限、电池详细信息等。一代现用 MCU 没有这些扩展；不能把二代整个初始化流程替换进来。
-这份公开分支的源码归档 SHA256 为 `9ea7890bba5a36d52104e9fa873c29dc7389303f3092d8b7bf6d42d720017b63`。
+- 原样引入官方 `990-photonicat-pm-add-driver.patch`，SHA256 为
+  `40a5a540f6b3169cf590cbf246548ea78cdbf287e61a1c764c242f0d1a86ff99`，保留原许可和作者信息。
+- 一代设备树绑定官方 `pm-version = <1>`、115200 串口、主电源 GPIO、60 秒强制关机等待、
+  monitored-battery 和辅助供电 gpio-hog；删除会重复占用同一 GPIO 的旧节点。
+- 电池设计参数及估算表与现场官方系统对应。公开设备树中的最小／最大电压顺序与现场不同，
+  采用现场读到的最小 3560000、最大 4100000 微伏；这些是 power_supply 元数据，不是充电电压命令。
+- 使用官方公开内核接口后台 `0e61a4abf35c423420310311f1b2b059deba0cac` 的电源实现，
+  源码归档 SHA256 为 `9ea7890bba5a36d52104e9fa873c29dc7389303f3092d8b7bf6d42d720017b63`。
+  不编译模组控制，不抢占 QModem 的 AT、GPIO、rfkill 或网络管理。
+- 默认九项电压参数全部为 0；新的 ARM64 后台在模拟 MCU 上已下发同样的全零启动载荷。
+  心跳、看门狗和关机握手由配套官方内核承担，服务重启不再禁用 MCU 看门狗。
+- 仅将旧版**逐字未改过**的出厂配置迁移为官方默认值，并保存原文件备份；自定义电压配置不自动覆盖。
+- 保留光影猫管理的现有界面及六个电源 Socket 接口；sysfs 缺失、读值无效时拒绝报告成功或触发 UPS 关机。
+  车载模式遵循官方逻辑：按键手动开机不会因拔线直接进入自动关机。
+- 构建及发布前检查最终内核必须内建官方驱动、serdev、UART、power_supply 与 RTC，拒绝旧后台或第二个模块所有者。
 
-公开驱动对一代短状态帧仍按输入是否达到 4.2V 推算外部供电，电量按电压曲线估算，
-没有找到独立的一代充电开关。没有借用二代充电上限命令，也没有调整充电电压、满电阈值、温度或低电压保护来绕过故障。
+## 公开范围与验证边界
 
-## 已修正的辅助供电差异
+官方生产配方还引用需认证的 Git 地址，公开配方为 r64，而现场程序为 r65。
+因此没有宣称可以逐字重建整套官方镜像，也没有把官方二进制当成可复现源码。
+本次采用固定的公开内核驱动与后台源码，并以现场接口和实际启动指令核对一代兼容路径。
 
-官方[一代设备树](https://github.com/photonicat/photonicat_openwrt/blob/119964435eb7bc6384eed8ecee7bd7104b6e8ee2/target/linux/rockchip/files/arch/arm64/boot/dts/rockchip/rk3568-photonicat.dts)
-通过 `aux-pwren` gpio-hog 保持 `GPIO4_D2` 高电平；此前真机设备树也有同样节点。
-ImmortalWrt 则把同一 GPIO 交给 `vcc5v0_boost` regulator，通过 USB PHY 作为消费者开启。
-v1.7 实际镜像里的该 regulator 没有 `regulator-boot-on` / `regulator-always-on`。
+后台已在 RK3568 的独立构建环境原生编译；101 项原生回归全部通过、无跳过，覆盖电源接口、
+模式、无效读值、配置迁移、设备树编译及 GPIO 单一所有者。两个前端行为检查及 shellcheck 通过。状态测试和模拟 MCU 指令一致，
+**仍不能代替新内核启动后的实际充电、拔线接管与关机／唤醒验收**。
+验证固件可通过 Actions 的 `publish_release=false` 仅生成附件，验收前不自动发布。
 
-Linux 6.12 的[固定 regulator 驱动](https://github.com/torvalds/linux/blob/v6.12/drivers/regulator/fixed.c)
-在未声明 boot-on 时以 `GPIOD_OUT_LOW` 申请使能 GPIO。存在初始化先拉低、后续再打开的风险；
-缺少消费者时也可能被关闭。这是外设辅助供电连续性的差异，**不是已证实的电池充电故障原因**。
-
-首次拟增加 boot-on 与 always-on。再次复核 Linux 的
-[regulator 核心](https://github.com/torvalds/linux/blob/v6.12/drivers/regulator/core.c)后发现，always-on 会持续持有
-`vin-supply` 指向的上级 USB 电源引用，不能把它等同于官方独立 GPIO 的保持行为，可能改变运行时关断与恢复路径。
-因此已移除尚未发布的 always-on 改动，只修正有明确源码依据的启动初始化问题。
-
-最终 `patches/rockchip/950-swrt-photonicat-keep-aux-power.patch` 仅对现有 regulator 增加：
-
-```dts
-regulator-boot-on;
-```
-
-保持原来的 GPIO、USB PHY 绑定和上游电源依赖，不增加第二个 gpio-hog。
-运行期间仍由原 USB 消费者管理开启与关闭，没有消费者时允许正常关断；没有宣称完全复刻官方持续置高的运行策略。
-是否改善启动或拔线后的外设稳定性仍需真机验证。
-
-`scripts/patch-board-power.py` 在构建前核对锁定设备补丁的 SHA256，拒绝未知版本和同名不同内容的本地补丁；
-检查 generic、rockchip 与 armv8 三层配置；检测到内建或模块化 `CONFIG_PHOTONICAT_PM` 时停止，避免包检查漏掉内核所有者。
-检查在 `diy.sh` 之后执行，防止自定义步骤绕过；发布附件收集时还通过 `check-kernel-power.py` 核对最终编译内核的配置，
-拒绝第二个 MCU 所有者、缺失或模块化的 UART 驱动、缺失或歧义的内核构建目录，并把最终配置保存到诊断附件。
-运行时若 `/dev/pcat-pm-ctl` 已存在，裸串口后台拒绝启动并记录原因。
-同时补充排除官方旧名称 `pcat-manager-v1`，并生成 `swrt-metadata/board-power.json` 供构建附件核对。
-
-## 没有直接套用的改动
-
-- [eMMC 降到 52MHz 的提交](https://github.com/photonicat/photonicat_openwrt/commit/873643193f8105e92e3a33cddc4377c94d09846c)实际修改 RK3576 二代设备树及 U-Boot，一代不受这条提交影响。
-- 公开一代设备树把电池设计最小电压写为 4.10V、最大写为 3.45V，数值顺序异常；此前真机读到的则是最小 3.56V、最大 4.10V。这些属性不是可直接下发的充电电压，未复制到 SWRT。
-- 官方内核的 USB watchdog 驱动不代表一代一定启用了对应设备节点。本次没有添加自动重置 USB Hub 的机制，避免写盘过程中复位整条 USB 链路。
-- 没有替换官方整套设备树、网口编号、PHY 配置、用户界面、软件源或 QModem；软、硬件流量卸载继续默认开启。
-
-## 验证范围
-
-- 在 Linux 用 GNU patch `--fuzz=0` 实际应用新增补丁，与预期源码逐字比较通过。
-- 下载并核对 v1.7 SquashFS 镜像 SHA256，从启动分区提取实际设备树。再次 DTC 检查确认仅增加 boot-on，逐节点比较确认其余属性、GPIO、phandle 和所有供电引用保持原值；完整锁定设备树源码应用补丁后与预期逐字比较通过。这是设备树层面的验证，不是整套 ARM 内核重新编译。
-- 再次复核后的 36 项 Linux 针对性测试全部通过：板级防护及 DTC 7 项、最终内核配置 5 项、构建准备 6 项、成品与网络集成 12 项、服务和存储保护 6 项。Shell 语法与 shellcheck 通过。Windows 完整发现 88 项，其中 40 项执行通过、48 项因原生环境要求跳过；未把跳过项计为通过。
-- 本轮后续已重新通过 SSH 接入官方系统，确认 `/dev/pcat-pm-ctl`、官方内核 MCU 所有者及辅助供电 GPIO 高电平与前述记录一致。sysfs 仍显示 Charging，但一代状态来自电压估算，不能据此证明实际充电电流。没有下发电源控制命令或刷写固件；SWRT 的充电、拔线接管及 USB / SD 长期稳定性仍待新固件启动后验收。
+一代没有公开的独立充电开关或充电电流接口。二代充电上限命令不能拿来实现一代开关；
+不降低充电电压、温度或低电保护来模拟充电控制，也不把电源在位状态当成实测充电电流。

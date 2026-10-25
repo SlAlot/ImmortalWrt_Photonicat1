@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class OwnerConfigurationTests(unittest.TestCase):
-    def test_kernel_mcu_owner_cannot_be_selected_alongside_uart_service(self):
+    def test_power_driver_must_be_builtin_not_a_second_module(self):
         with tempfile.TemporaryDirectory() as folder:
             config = Path(folder) / "config"
             config.write_text((ROOT / ".config").read_text() + "\nCONFIG_PACKAGE_kmod-photonicat-pm=y\n")
@@ -35,38 +35,41 @@ class ServiceSafetyTests(unittest.TestCase):
         path.write_text(text)
         path.chmod(0o755)
 
-    def test_restart_disarms_watchdog_but_system_shutdown_keeps_handshake(self):
+    def test_kernel_backed_service_keeps_watchdog_in_kernel(self):
         board = self.root / "board"
         board.write_text("ariaboard,photonicat\n")
         timezone = self.root / "TZ"
         timezone.write_text("CST-8\n")
+        voltage = self.root / "voltage"
+        voltage.write_text("3900000\n")
+        migrate = self.bin / "migrate"
+        self.executable("migrate", '#!/bin/sh\necho MIGRATE >> "$TEST_LOG"\n')
         script = (ROOT / "package/swrt-pcat-manager/files/swrt-pcat-manager.init").read_text()
-        script = script.replace("/tmp/sysinfo/board_name", str(board)).replace("/dev/ttyS4", "/dev/null").replace("/etc/TZ", str(timezone))
+        script = script.replace("/tmp/sysinfo/board_name", str(board)).replace("/dev/pcat-pm-ctl", "/dev/null")
+        script = script.replace("/sys/class/power_supply/battery/voltage_now", str(voltage))
+        script = script.replace("/usr/libexec/swrt-power-migrate", str(migrate)).replace("/etc/TZ", str(timezone))
         prefix = '''pidof() { return 1; }
 procd_open_instance() { :; }
 procd_close_instance() { :; }
 procd_set_param() { printf '%s\\n' "$*" >> "$TEST_LOG"; }
-procd_send_signal() { printf '%s\\n' "$*" >> "$TEST_LOG"; }
-sleep() { printf 'sleep %s\\n' "$*" >> "$TEST_LOG"; }
-stop() { stop_service; procd_send_signal swrt-pcat-manager '*' TERM; }
 '''
-        result = subprocess.run(["sh", "-c", prefix + script + "\nstart_service\nstop\nshutdown\n"],
+        result = subprocess.run(["sh", "-c", prefix + script + "\nstart_service\n"],
                                 env=self.env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         lines = self.log.read_text().splitlines()
+        self.assertEqual(lines[0], "MIGRATE")
         self.assertIn("env TZ=CST-8", lines)
-        self.assertIn("respawn 3600 1 5", lines)
-        self.assertEqual(lines[-4:], ["swrt-pcat-manager * USR1", "sleep 2", "swrt-pcat-manager * TERM",
-                                     "swrt-pcat-manager * TERM"])
+        self.assertIn("respawn 3600 2 5", lines)
+        self.assertNotIn("USR1", script)
+        self.assertNotIn("/dev/ttyS4", script)
 
-    def test_kernel_control_interface_blocks_raw_uart_start(self):
+    def test_missing_kernel_interface_refuses_legacy_uart_fallback(self):
         board = self.root / "board"
         board.write_text("ariaboard,photonicat\n")
-        control = self.root / "pcat-pm-ctl"
+        control = self.root / "not-a-character-device"
         control.touch()
         script = (ROOT / "package/swrt-pcat-manager/files/swrt-pcat-manager.init").read_text()
-        script = script.replace("/tmp/sysinfo/board_name", str(board)).replace("/dev/ttyS4", "/dev/null")
-        script = script.replace("/dev/pcat-pm-ctl", str(control))
+        script = script.replace("/tmp/sysinfo/board_name", str(board)).replace("/dev/pcat-pm-ctl", str(control))
         prefix = '''logger() { printf '%s\\n' "$*" >> "$TEST_LOG"; }
 procd_open_instance() { echo STARTED >> "$TEST_LOG"; }
 '''
@@ -74,8 +77,35 @@ procd_open_instance() { echo STARTED >> "$TEST_LOG"; }
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 1)
         log = self.log.read_text()
-        self.assertIn("Kernel MCU interface is active", log)
+        self.assertIn("Official kernel power interface is unavailable", log)
         self.assertNotIn("STARTED", log)
+
+    def test_only_exact_legacy_factory_voltages_are_migrated(self):
+        factory = self.root / "factory"
+        factory.mkdir()
+        legacy = (ROOT / "package/swrt-pcat-manager/files/legacy-v1.conf").read_bytes()
+        (factory / "legacy-v1.conf").write_bytes(legacy)
+        official = b"[PowerManager]\nAutoShutdownVoltage5G=0\nBatteryFullThreshold=0\n"
+        (factory / "official-v1.conf").write_bytes(official)
+        config = self.root / "pcat-manager.conf"
+        script = (ROOT / "package/swrt-pcat-manager/files/swrt-power-migrate").read_text()
+        script = script.replace("/etc/pcat-manager.conf", str(config)).replace("/usr/share/swrt-pcat-manager", str(factory))
+        self.executable("logger", "#!/bin/sh\nexit 0\n")
+        def run():
+            result = subprocess.run(["sh", "-c", script], env=self.env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        custom = legacy.replace(b"ChargerLimitVoltage=0", b"ChargerLimitVoltage=4750")
+        config.write_bytes(custom)
+        run()
+        self.assertEqual(config.read_bytes(), custom)
+        self.assertFalse(Path(str(config) + ".pre-kernel-backend").exists())
+        config.write_bytes(legacy)
+        run()
+        self.assertEqual(config.read_bytes(), official)
+        self.assertEqual(Path(str(config) + ".pre-kernel-backend").read_bytes(), legacy)
+        run()
+        self.assertEqual(config.read_bytes(), official)
+        self.assertEqual(Path(str(config) + ".pre-kernel-backend").read_bytes(), legacy)
 
     def storage(self, *, native="f2fs", fs="squashfs", current="/opt/docker/", existing=False,
                 destination=False, running=False, alternative=""):

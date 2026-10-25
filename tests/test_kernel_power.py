@@ -6,7 +6,10 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-VALID = "CONFIG_SERIAL_8250=y\nCONFIG_SERIAL_8250_DW=y\n# CONFIG_PHOTONICAT_PM is not set\n"
+VALID = "".join("CONFIG_" + name + "=y\n" for name in (
+    "PHOTONICAT_PM", "SERIAL_DEV_BUS", "SERIAL_DEV_CTRL_TTYPORT", "SERIAL_8250",
+    "SERIAL_8250_DW", "POWER_SUPPLY", "RTC_CLASS"))
+
 
 
 def write_kernel_config(root):
@@ -32,13 +35,13 @@ class ResolvedKernelPowerTests(unittest.TestCase):
         self.assertEqual((audit / "kernel.config").read_bytes(), self.config.read_bytes())
         record = json.loads((audit / "kernel-power.json").read_text())
         self.assertEqual(record["kernel_config_sha256"], hashlib.sha256(self.config.read_bytes()).hexdigest())
-        self.assertFalse(record["kernel_mcu_owner"])
+        self.assertTrue(record["kernel_mcu_owner"])
 
-    def test_builtin_or_modular_kernel_owner_blocks_release(self):
-        for mode in ("y", "m"):
+    def test_missing_or_modular_official_kernel_owner_blocks_release(self):
+        for mode in ("n", "m"):
             with self.subTest(mode=mode):
-                self.config.write_text(VALID + "CONFIG_PHOTONICAT_PM=" + mode + "\n")
-                with self.assertRaisesRegex(ValueError, "Resolved kernel MCU owner"):
+                self.config.write_text(VALID.replace("CONFIG_PHOTONICAT_PM=y", "CONFIG_PHOTONICAT_PM=" + mode))
+                with self.assertRaisesRegex(ValueError, "Official power backend must be built"):
                     self.module.check(self.root)
                 self.assertFalse((self.root / "swrt-metadata/kernel-power.json").exists())
 
@@ -46,7 +49,7 @@ class ResolvedKernelPowerTests(unittest.TestCase):
         for symbol in ("CONFIG_SERIAL_8250", "CONFIG_SERIAL_8250_DW"):
             with self.subTest(symbol=symbol):
                 self.config.write_text(VALID.replace(symbol + "=y", symbol + "=m"))
-                with self.assertRaisesRegex(ValueError, "UART must be built"):
+                with self.assertRaisesRegex(ValueError, "Official power backend must be built"):
                     self.module.check(self.root)
 
     def test_missing_resolved_config_is_not_treated_as_success(self):

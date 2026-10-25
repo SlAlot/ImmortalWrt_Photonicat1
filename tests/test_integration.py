@@ -93,12 +93,12 @@ class ImagePublicationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Missing RK3568 loader", result.stderr)
 
-    def test_kernel_owner_is_rejected_even_without_conflicting_package(self):
+    def test_missing_official_kernel_backend_blocks_release(self):
         self.write_images()
-        self.kernel.write_text(self.kernel.read_text() + "CONFIG_PHOTONICAT_PM=y\n")
+        self.kernel.write_text(self.kernel.read_text().replace("CONFIG_PHOTONICAT_PM=y", "# CONFIG_PHOTONICAT_PM is not set"))
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Resolved kernel MCU owner", result.stderr)
+        self.assertIn("Official power backend must be built", result.stderr)
         self.assertEqual(list((self.root / "release").iterdir()), [])
 
     def test_missing_package_blocks_release(self):

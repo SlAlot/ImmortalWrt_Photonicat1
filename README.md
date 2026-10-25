@@ -186,6 +186,8 @@ Docker / Compose 已集成，管理入口在左侧独立的 **Docker** 菜单。
 2. 选择 **Build SWRT Photonicat1**。
 3. 点击 **Run workflow**，选择 `main` 分支并运行。
 
+需要先验证、不公开发布时，关闭 `publish_release`，编译结果仍会保存在 Actions 附件中。
+
 版本输入框留空时自动递增；需要指定版本时填写 `1.5` 这样的版本号，必须高于已有发布（含草稿）。
 
 ### 推送触发

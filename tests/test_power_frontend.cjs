@@ -103,6 +103,12 @@ function harness(readonly = false) {
     assert.equal(call[1][0], 'ups'); assert.equal(call[1][1], 5);
     assert.equal(call[1][4], 'a'.repeat(64)); assert.equal(call[1][5], 1);
 
+    const manualCar = harness();
+    manualCar.data.car = {state: 1, timeout: 300, countdown: 0, armed: false};
+    await manualCar.polls[0]();
+    assert.ok(walk(manualCar.root).some(n => n.textContent.includes('由充电器自动开机')),
+        'Official manual boots must not promise an armed unplug countdown');
+
     const batteryOnly = harness();
     batteryOnly.data.battery.external_power = false;
     await batteryOnly.polls[0]();
