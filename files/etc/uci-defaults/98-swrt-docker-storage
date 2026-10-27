@@ -8,7 +8,7 @@ pidof dockerd >/dev/null 2>&1 && exit 0
 awk '$2 == "/rom" && $3 == "squashfs" { found=1 } END { exit !found }' /proc/mounts || exit 0
 awk '$2 == "/overlay" && ($3 == "f2fs" || $3 == "ext4") { found=1 } END { exit !found }' /proc/mounts || exit 0
 [ ! -L /opt/docker ] && [ ! -L /overlay/docker ] || exit 0
-if [ -e /opt/docker ] && { [ ! -d /opt/docker ] || [ -n "$(find /opt/docker -mindepth 1 -maxdepth 1 -print -quit)" ]; }; then
+if [ -e /opt/docker ] && { [ ! -d /opt/docker ] || [ -n "$(find /opt/docker -mindepth 1 -maxdepth 1 -print | head -n 1)" ]; }; then
     logger -t swrt-docker 'Existing Docker data preserved; storage requires manual review'
     exit 0
 fi

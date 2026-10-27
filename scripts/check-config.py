@@ -31,6 +31,7 @@ required = [
     "PACKAGE_docker-compose", "PACKAGE_luci-lib-docker", "PACKAGE_luci-lib-taskd",
     "PACKAGE_luci-lib-xterm", "PACKAGE_taskd",
     "PACKAGE_containerd", "PACKAGE_runc", "PACKAGE_kmod-veth", "PACKAGE_mount-utils",
+    "PACKAGE_sfdisk", "PACKAGE_partx-utils", "PACKAGE_blockdev", "PACKAGE_losetup", "PACKAGE_resize2fs", "PACKAGE_f2fsck",
     "PACKAGE_swrt-pcat-manager", "PACKAGE_luci-app-swrt-power", "PACKAGE_glib2", "PACKAGE_jsonfilter",
     "PACKAGE_u-boot-photonicat-rk3568",
     "PACKAGE_kmod-ath10k-sdio", "PACKAGE_kmod-ath11k-pci",

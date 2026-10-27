@@ -50,7 +50,7 @@ class ImagePublicationTests(unittest.TestCase):
             "mwan3", "iptables-nft", "ip6tables-nft", "ipset", "ip-full",
             "docker-compose", "luci-app-dockerman", "luci-lib-docker",
             "luci-lib-taskd", "luci-lib-xterm", "taskd", "containerd", "runc",
-            "kmod-veth", "mount-utils", "modem_scan")))
+            "kmod-veth", "mount-utils", "modem_scan", "sfdisk", "partx-utils", "blockdev", "losetup", "resize2fs", "f2fsck")))
 
     def write_images(self):
         images = []

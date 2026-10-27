@@ -52,7 +52,8 @@
 ## 无线、磁盘与 Docker
 
 - 无线驱动列表见 [README](../README.md#wi-fi-网卡支持)。MT7921/MT7922 PCIe 共用 `mt7921e`，并包含对应固件；MT7921 的 USB / SDIO 驱动也已集成。设备 ID 与接口必须匹配，蓝牙不在此范围内。
-- 根分区保留 1 GiB。全新 SquashFS 安装的 Docker 默认数据放在原生 `/overlay/docker`，避免容器 OverlayFS 叠在根 OverlayFS 上；已有数据、用户指定目录、运行中的服务和 ext4 根系统不自动迁移。Docker 为独立侧栏入口，保留 iStore 所需 Lua 库；默认 WAN 拦截规则允许容器连接的回包，Docker 不主动修改路由器的转发默认策略。未开放无认证的网络 Docker API，软件与硬件流量卸载保持开启。大型镜像仍需稳定的外部存储，多 WAN、代理和实际 iStore 应用安装待真机验证，详见 [Docker 兼容性说明](DOCKER-COMPATIBILITY.md)。
+- 镜像初始根分区为 1 GiB，首次启动自动扩展 eMMC 分区和文件系统，适配 8 / 16 / 64 GB，保留额外数据分区。F2FS 在 overlay 挂载前离线扩展，ext4 同时支持；后续启动按容量判断，无需重复扩展。标准 sysupgrade 的分区比较允许根分区变大，正常升级保留扩容后的分区边界；这不代表镜像、容器数据会随配置备份保留。
+- 全新 SquashFS 安装的 Docker 默认数据放在原生 `/overlay/docker`，避免容器 OverlayFS 叠在根 OverlayFS 上；已有数据和用户指定目录不自动迁移，不设置容量配额或额外启动限制。Docker 为独立侧栏入口，保留 iStore 所需 Lua 库；默认 WAN 拦截规则允许容器连接的回包，Docker 不主动修改路由器的转发默认策略。未开放无认证的网络 Docker API，软件与硬件流量卸载保持开启。多 WAN、代理和实际 iStore 应用安装待真机验证，详见 [Docker 兼容性说明](DOCKER-COMPATIBILITY.md)。
 - DiskMan 包含分区、SMART 与文件系统工具；格式化和调整分区会影响数据，操作前先备份。
 
 ## 已完成的检查与待验收项目

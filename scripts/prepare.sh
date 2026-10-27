@@ -16,10 +16,12 @@ cp -a "$repo_dir/package/swrt-pcat-manager" "$repo_dir/package/luci-app-swrt-pow
 find "$build_dir/files/etc/uci-defaults" "$build_dir/files/etc/hotplug.d" -type f -exec chmod 755 {} +
 chmod 755 "$build_dir/files/usr/share/qmodem/swrt-scan-once"
 chmod 755 "$build_dir/files/usr/libexec/swrt-apk-status"
+chmod 755 "$build_dir/files/usr/libexec/swrt-autogrow"
 
 cd "$build_dir"
 bash "$repo_dir/diy.sh"
 python3 "$repo_dir/scripts/patch-board-power.py" "$build_dir"
+python3 "$repo_dir/scripts/patch-autogrow.py" "$build_dir"
 ./scripts/feeds update -a
 python3 "$repo_dir/scripts/patch-feeds.py" "$build_dir"
 python3 "$repo_dir/scripts/patch-docker.py" "$build_dir"

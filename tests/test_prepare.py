@@ -82,6 +82,9 @@ class PreparePipelineTests(unittest.TestCase):
         write_qmodem_runtime(self.build)
         write_quickstart(self.build)
         write_docker(self.build)
+        platform = self.build / 'target/linux/rockchip/armv8/base-files/lib/upgrade/platform.sh'
+        platform.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / 'tests/fixtures/rockchip-platform.sh', platform)
         (self.build / "scripts").mkdir()
         feeds = self.build / "scripts/feeds"
         feeds.write_text("""#!/bin/sh

@@ -1,0 +1,10 @@
+# Expand the physical eMMC before fstools discovers or mounts rootfs_data.
+swrt_autogrow_preinit() {
+    [ "$FAILSAFE" = 1 ] && return 0
+    /usr/libexec/swrt-autogrow grow
+    case "$?" in
+        75) sync; reboot -f ;;
+    esac
+}
+
+[ "$INITRAMFS" = 1 ] || boot_hook_add preinit_main swrt_autogrow_preinit
