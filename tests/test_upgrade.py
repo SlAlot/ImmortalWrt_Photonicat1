@@ -105,6 +105,9 @@ if [ "$1" = '-T' ]; then
 fi
 # Model OpenWrt stage2 terminating the caller after accepting the image.
 # This stub never invokes the host's real sysupgrade or any block writer.
+if [ -f "$SWRT_UPGRADE_ROOT/upgrade-reject" ]; then
+    exit 7
+fi
 if [ -f "$SWRT_UPGRADE_ROOT/handoff-signal" ]; then
     printf '%s\\n' "$PPID" > "$SWRT_UPGRADE_ROOT/handoff-pid"
     kill -TERM "$PPID"
@@ -369,6 +372,18 @@ else: sys.exit(1)
         self.assertEqual(json.loads(self.state.read_text())['phase'], 'installing')
         calls = self.log.read_text().splitlines()
         self.assertEqual(len([line for line in calls if line.startswith('-n ')]), 1)
+
+    def test_sysupgrade_rejection_reports_failure_and_retains_image(self):
+        for keep in (0, 1):
+            with self.subTest(keep=keep):
+                self.prepare()
+                (self.root / 'upgrade-reject').touch()
+                self.assert_ok('install', {'keep': keep, 'sha256': self.sha})
+                state = self.wait_worker()
+                self.assertEqual(state['phase'], 'failed')
+                self.assertIn('拒绝或中止请求', state['message'])
+                self.assertEqual(hashlib.sha256((self.worker / 'firmware.img.gz').read_bytes()).hexdigest(), self.sha)
+                (self.root / 'upgrade-reject').unlink()
 
     def test_simultaneous_download_and_stale_worker_recovery(self):
         self.assert_ok("check")
