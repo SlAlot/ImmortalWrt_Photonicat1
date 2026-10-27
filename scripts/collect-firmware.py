@@ -44,6 +44,12 @@ required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "luci-lib-taskd", "luci-lib-xterm", "taskd", "containerd", "runc",
             "kmod-veth", "mount-utils", "modem_scan", "sfdisk", "partx-utils", "blockdev", "losetup", "resize2fs", "f2fsck"}
 assert required <= packages, f"Missing installed packages: {required - packages}"
+updater_version = next((line.split(" - ", 1)[1].strip()
+    for line in manifests[0].read_text().splitlines()
+    if line.startswith("luci-app-swrt-upgrade - ")), "")
+updater_match = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:$|[-+~])", updater_version)
+assert updater_match and tuple(map(int, updater_match.groups())) >= (1, 1, 1), \
+    f"Online updater lacks the stage2 handoff fix: {updater_version}"
 forbidden = {"luci-app-docker", "pcat-mgr", "pcat-manager", "pcat-manager-v1", "kmod-photonicat-pm", "luci-app-modemband", "modemband", "luci-app-sms-tool-js",
              "luci-app-qmodem", "luci-app-qmodem-sms", "luci-app-qmodem-mwan",
              "luci-app-qmodem-ttl", "luci-app-qmodem-hc",

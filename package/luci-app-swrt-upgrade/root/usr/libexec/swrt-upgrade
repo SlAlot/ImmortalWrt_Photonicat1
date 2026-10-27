@@ -273,6 +273,9 @@ case "$MODE" in
         check_image
         phase installing '正在刷写固件，请勿断电，等待设备重启'
         sync
+        # OpenWrt stage2 terminates this worker before reading the image.
+        # After handoff, neither a shutdown signal nor EXIT may remove it.
+        trap - EXIT HUP INT TERM
         if [ "$KEEP" = 1 ]; then
             "$SYSUPGRADE" -k "$IMAGE"
         else

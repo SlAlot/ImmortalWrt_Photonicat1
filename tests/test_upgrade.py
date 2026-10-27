@@ -103,6 +103,13 @@ if [ "$1" = '-T' ]; then
     [ ! -f "$SWRT_UPGRADE_ROOT/partition-change" ] || echo 'Partition layout has changed. Full image will be written.'
     exit 0
 fi
+# Model OpenWrt stage2 terminating the caller after accepting the image.
+# This stub never invokes the host's real sysupgrade or any block writer.
+if [ -f "$SWRT_UPGRADE_ROOT/handoff-signal" ]; then
+    printf '%s\\n' "$PPID" > "$SWRT_UPGRADE_ROOT/handoff-pid"
+    kill -TERM "$PPID"
+    exit 0
+fi
 # NEVER call the machine's real sysupgrade. A test flash returns immediately.
 exit 0
 ''')
@@ -343,6 +350,25 @@ else: sys.exit(1)
         calls = self.log.read_text().splitlines()
         self.assertTrue(any(line.startswith("-n ") for line in calls))
         self.assertFalse(any("--force" in line or "-F " in line for line in calls))
+        self.assertTrue((self.worker / 'firmware.img.gz').exists(),
+                        'The handed-off image must survive even if sysupgrade returns unexpectedly')
+
+    def test_stage2_termination_does_not_delete_accepted_firmware(self):
+        self.prepare()
+        (self.root / 'handoff-signal').touch()
+        self.assert_ok('install', {'keep': 0, 'sha256': self.sha})
+        deadline = time.monotonic() + 8
+        while not (self.root / 'handoff-pid').exists() and time.monotonic() < deadline:
+            time.sleep(.03)
+        self.assertTrue((self.root / 'handoff-pid').exists(), 'Installer did not reach the handoff stub')
+        # Wait until the caller and its stub have both released the inherited lock.
+        subprocess.run(['flock', str(self.worker / 'lock'), 'true'], timeout=3, check=True)
+        image = self.worker / 'firmware.img.gz'
+        self.assertTrue(image.exists(), 'Stage2 needs this image after stopping the update worker')
+        self.assertEqual(hashlib.sha256(image.read_bytes()).hexdigest(), self.sha)
+        self.assertEqual(json.loads(self.state.read_text())['phase'], 'installing')
+        calls = self.log.read_text().splitlines()
+        self.assertEqual(len([line for line in calls if line.startswith('-n ')]), 1)
 
     def test_simultaneous_download_and_stale_worker_recovery(self):
         self.assert_ok("check")

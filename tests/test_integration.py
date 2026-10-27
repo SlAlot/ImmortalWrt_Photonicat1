@@ -51,6 +51,16 @@ class ImagePublicationTests(unittest.TestCase):
             "docker-compose", "luci-app-dockerman", "luci-lib-docker",
             "luci-lib-taskd", "luci-lib-xterm", "taskd", "containerd", "runc",
             "kmod-veth", "mount-utils", "modem_scan", "sfdisk", "partx-utils", "blockdev", "losetup", "resize2fs", "f2fsck")))
+        self.manifest.write_text(self.manifest.read_text().replace(
+            "luci-app-swrt-upgrade - 1.0", "luci-app-swrt-upgrade - 1.1.1-r1"))
+
+    def test_old_online_updater_blocks_release(self):
+        self.write_images()
+        self.manifest.write_text(self.manifest.read_text().replace(
+            "luci-app-swrt-upgrade - 1.1.1-r1", "luci-app-swrt-upgrade - 1.1.0-r1"))
+        result = self.collect()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Online updater lacks the stage2 handoff fix", result.stderr)
 
     def write_images(self):
         images = []
