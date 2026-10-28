@@ -1,31 +1,26 @@
 ## SWRT · 光影猫一代 v2.0
 
-适用于 **Photonicat 1 / RK3568**，支持 **1+8、2+16、4+64 GB**，不适用于二代。
+适用于 **Photonicat 1 / RK3568**，支持 **1+8、2+16、4+64 GB**，不适用于二代。作者：**SlAlot**。
 
-### 本次修复
+### 版本内容
 
-- 修复在线更新确认升级后，设备重启却仍停在旧版的问题：升级交接时不再由后台退出清理误删待刷写镜像。
-- 正式内置更新器 **1.1.1**，后续构建继续包含修复；原生升级程序拒绝请求时明确报错，增加交接信号及拒绝请求的回归测试，并在发布前检查已安装的更新器版本。
-- 保留 eMMC 首次开机自动扩容、已扩容分区升级兼容、QModem Next（Tom 核心）、网络面板、iStore、Docker / Compose、DiskMan、光影猫管理，以及现有无线和 USB 驱动。流量卸载保持开启。
+- 内置更新器 **1.1.1**，修复确认升级后重启仍停在原版本的问题，完善升级异常提示。
+- eMMC 首次开机自动扩容，后续升级保留已扩容的分区边界。
+- 集成 QModem Next（Tom 核心）、网络面板、iStore 首页与商店、Docker / Compose、DiskMan、ttyd 和光影猫管理。
+- 包含 QCA9377、WCN6855、MT7603、MT76x2、MT7921 / MT7922 无线驱动及常用 USB 驱动，软、硬件流量卸载默认开启。
 
-默认主机名 `S-Photonicat1`，网关 `192.168.17.1`，终端 Banner `SWRT`。
+默认管理地址 **192.168.17.1**，账号 **root**，初始密码为空；主机名 **S-Photonicat1**。
 
-### 下载与更新
+### 下载与安装
 
-两个固件选一个，更新时保持当前 SquashFS / ext4 类型：
+| 文件 | 内容 |
+| --- | --- |
+| `immortalwrt-photonicat-1-squashfs-sysupgrade-2.0.img.gz` | SquashFS 固件 |
+| `immortalwrt-photonicat-1-ext4-sysupgrade-2.0.img.gz` | ext4 固件 |
+| `sha256sums` | SHA-256 校验清单 |
 
-- `immortalwrt-photonicat-1-squashfs-sysupgrade-2.0.img.gz`
-- `immortalwrt-photonicat-1-ext4-sysupgrade-2.0.img.gz`
-- `sha256sums`：完整性校验清单。
+**v1.9 及更早版本升级：**先备份，在“系统 → 备份与升级”上传同类型 `.img.gz`，无需解压，建议不保留配置。不要使用旧 SWRT 在线更新器重试；进入 v2.0 后，后续再使用在线更新。
 
-**v1.8 / v1.9 且更新器未热修复：**先备份配置，在“系统 → 备份与升级”直接上传同类型 `.img.gz`，推荐不保留配置。不要继续用旧的 SWRT 在线更新器重试。升级到 v2.0 后即可正常使用在线更新。
+**首次安装或跨系统切换：**将 `.img.gz` 解压成 `.img`，使用 RKDevTool 和一代 Loader，完整镜像写入地址为 `0x00000000`。首次开机自动扩容可能额外重启一次，请保持供电并等待完成。
 
-**更新器已热修复或以后使用 v2.0：**可正常使用“系统 → SWRT 在线更新”，重新检查最新版本并下载、校验，最后手动确认升级。配置备份不包含 Docker 镜像、容器和数据卷，重要数据另行备份。
-
-**首次安装或从其他系统切换：**使用 RKDevTool，先把 `.img.gz` 解压成 `.img`，使用一代 Loader，完整镜像写入地址为 `0x00000000`。首次开机自动扩容可能额外重启一次，请保持供电并等待管理页恢复。
-
-步骤见[项目 README](https://github.com/SlAlot/ImmortalWrt_Photonicat1#下载与安装)。
-
-### 验证范围
-
-旧版问题已在真机隔离目录中复现；同样的终止信号场景下，修复后镜像保持完整。更新器 25 项回归与页面行为检查通过，真实刷写仍需由用户确认。完整构建、扩容回归及成品检查以本次 Actions 为准。
+配置备份不包含 Docker 镜像、容器和数据卷，重要数据另行备份。完整步骤与网卡列表见 [README](https://github.com/SlAlot/ImmortalWrt_Photonicat1#下载与安装)。
