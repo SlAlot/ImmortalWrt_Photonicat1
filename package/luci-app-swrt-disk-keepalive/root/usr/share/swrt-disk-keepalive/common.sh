@@ -17,7 +17,7 @@ valid_id() {
 # No blkid, SMART or filesystem reads here: opening the page must not wake disks.
 inventory() {
     for sys in "$SYS_BLOCK"/sd*; do
-        [ -d "$sys" ] && [ ! -e "$sys/partition" ] || continue
+        if [ ! -d "$sys" ] || [ -e "$sys/partition" ]; then continue; fi
         [ "$(read_value "$sys/device/type")" = 0 ] || continue
         dev=$(readlink -f "$sys/device")
         case "$dev" in */usb[0-9]*/*) ;; *) continue ;; esac
@@ -70,7 +70,7 @@ read_config() {
     interval=$(uci -q get swrt_disk_keepalive.main.interval)
     usb_awake=$(uci -q get swrt_disk_keepalive.main.usb_awake)
     case "$interval" in ''|*[!0-9]*) interval=60 ;; esac
-    [ "$interval" -ge 10 ] && [ "$interval" -le 3600 ] || interval=60
+    if [ "$interval" -lt 10 ] || [ "$interval" -gt 3600 ]; then interval=60; fi
     [ "$enabled" = 1 ] || enabled=0
     [ "$usb_awake" = 1 ] || usb_awake=0
     ids=$(uci -q get swrt_disk_keepalive.main.device | tr ' ' '\n' | grep -E '^(wwid|serial)-[0-9a-f]{64}$' | head -n 16)
