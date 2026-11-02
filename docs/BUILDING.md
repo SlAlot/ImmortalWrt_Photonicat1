@@ -16,7 +16,7 @@
 | `.config` | 固件配置 |
 | `sources.lock.json`、`feeds.conf.default` | 固定源码和 feeds 版本 |
 | `files/` | 系统预置文件 |
-| `package/` | 网络面板、更新器、电源服务与兼容库 |
+| `package/` | 网络面板、更新器、电源服务、硬盘保活与兼容库 |
 | `patches/`、`scripts/` | 适配、配置与成品检查 |
 | `tests/` | 回归检查 |
 | `.github/workflows/swrt.yml` | 自动检查、构建和发布 |

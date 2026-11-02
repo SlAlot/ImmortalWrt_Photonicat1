@@ -40,7 +40,7 @@ class ImagePublicationTests(unittest.TestCase):
             "luci-app-diskman", "luci-i18n-diskman-zh-cn", "parted", "blkid",
             "smartmontools", "btrfs-progs", "kmod-fs-btrfs", "lsblk",
             "luci-app-swrt-upgrade", "jq-full", "flock", "coreutils-sha256sum",
-            "coreutils-stat",
+            "coreutils-stat", "luci-app-swrt-disk-keepalive", "coreutils-dd", "coreutils-timeout",
             "luci-app-qmodem-next", "wlmb-server", "quickstart",
             "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
             "swrt-pcat-manager", "luci-app-swrt-power", "luci-mod-battstatus", "glib2", "jsonfilter",
@@ -124,6 +124,17 @@ class ImagePublicationTests(unittest.TestCase):
         result = self.collect()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Missing installed packages", result.stderr)
+
+    def test_missing_disk_keepalive_or_direct_io_dependencies_blocks_release(self):
+        self.write_images()
+        original = self.manifest.read_text()
+        for name in ("luci-app-swrt-disk-keepalive", "coreutils-dd", "coreutils-timeout"):
+            with self.subTest(package=name):
+                self.manifest.write_text(original.replace(name + " - 1.0", ""))
+                result = self.collect()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Missing installed packages", result.stderr)
+                self.assertIn(name, result.stderr)
 
     def test_missing_docker_runtime_or_istore_library_blocks_release(self):
         self.write_images()

@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml/badge.svg)](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml)
 
-**SWRT 2.0** 是面向光影猫一代（Photonicat 1 / RK3568）的 ImmortalWrt 定制固件，由 **SlAlot** 维护。支持 **1+8、2+16、4+64 GB** 配置，不适用于二代。
+**SWRT 2.1** 是面向光影猫一代（Photonicat 1 / RK3568）的 ImmortalWrt 定制固件，由 **SlAlot** 维护。支持 **1+8、2+16、4+64 GB** 配置，不适用于二代。
 
 [下载固件](https://github.com/SlAlot/ImmortalWrt_Photonicat1/releases/latest) · [版本说明](docs/RELEASE-NOTES.md) · [兼容性说明](docs/COMPATIBILITY.md) · [问题反馈](https://github.com/SlAlot/ImmortalWrt_Photonicat1/issues)
 
@@ -18,6 +18,7 @@
 | 网络工具 | MWAN3、PassWall、OpenClash、SmartDNS、ZeroTier |
 | 固件更新 | SWRT 在线更新，默认国内加速，可切换 GitHub 官方源 |
 | 存储 | 首次开机自动扩展 eMMC 分区及文件系统，适配 8 / 16 / 64 GB |
+| 硬盘保活 | 选择 USB 硬盘定时只读，支持关闭所选硬盘的 USB 自动挂起，默认关闭 |
 
 ### Wi-Fi 网卡支持
 
@@ -52,8 +53,8 @@
 
 | 下载文件 | 用途 |
 | --- | --- |
-| `immortalwrt-photonicat-1-squashfs-sysupgrade-2.0.img.gz` | SquashFS 固件 |
-| `immortalwrt-photonicat-1-ext4-sysupgrade-2.0.img.gz` | ext4 固件 |
+| `immortalwrt-photonicat-1-squashfs-sysupgrade-2.1.img.gz` | SquashFS 固件 |
+| `immortalwrt-photonicat-1-ext4-sysupgrade-2.1.img.gz` | ext4 固件 |
 | `sha256sums` | SHA-256 校验清单 |
 
 ### 第一次刷入：USB 线刷
@@ -105,6 +106,12 @@ MWAN3 默认优先顺序为 **有线 WAN → Wi-Fi 中继 → 蜂窝网络**。W
 左侧“Docker”管理容器，“系统 → 磁盘管理”管理磁盘。全新 SquashFS 安装的 Docker 数据默认位于 `/overlay/docker`，可自行配置外部原生文件系统目录。
 
 首次启动使用 eMMC 连续可用空间自动扩容，保留额外数据分区；扩展的是存储，运行内存不变。已有 Docker 数据及自定义目录不会自动迁移。**配置备份不包含 Docker 镜像、容器和数据卷**，升级或迁移前另行备份。详见 [Docker](docs/DOCKER-COMPATIBILITY.md) 与[存储说明](docs/STORAGE-RECOVERY.md)。
+
+### 硬盘保活
+
+打开“系统 → 硬盘保活”，选择 USB 硬盘，开启并保存。默认每 60 秒直接读取 1 MiB，间隔应小于硬盘盒的休眠时间；可同时关闭所选硬盘的 USB 自动挂起。按稳定标识记住硬盘，重插后自动继续，TF 卡和内置 eMMC 不参与。
+
+保活不写入硬盘，也不永久修改硬盘盒固件；不能保证解决供电、线材或硬盘盒故障导致的掉盘。详见[插件说明](package/luci-app-swrt-disk-keepalive/README.md)。
 
 ## 兼容性与反馈
 

@@ -47,6 +47,11 @@ jobs:
           sh -n package/luci-app-swrt-upgrade/root/usr/libexec/swrt-upgrade
           shellcheck -s sh package/luci-app-swrt-upgrade/root/usr/libexec/swrt-upgrade package/luci-app-swrt-upgrade/root/usr/libexec/rpcd/luci.swrt_upgrade
           node tests/test_upgrade_frontend.cjs
+          sh -n package/luci-app-swrt-disk-keepalive/root/usr/libexec/swrt-disk-keepalive package/luci-app-swrt-disk-keepalive/root/usr/share/swrt-disk-keepalive/common.sh
+          shellcheck -s sh -e SC1091 package/luci-app-swrt-disk-keepalive/root/usr/libexec/swrt-disk-keepalive package/luci-app-swrt-disk-keepalive/root/usr/share/swrt-disk-keepalive/common.sh package/luci-app-swrt-disk-keepalive/root/usr/libexec/rpcd/luci.swrt_disk_keepalive
+          shellcheck -s sh -e SC2034,SC2317 package/luci-app-swrt-disk-keepalive/root/etc/init.d/swrt-disk-keepalive
+          node tests/test_disk_keepalive_frontend.cjs
+          sudo sh tests/disk_keepalive_harness.sh package/luci-app-swrt-disk-keepalive/root/usr/share/swrt-disk-keepalive/common.sh
           sh -n package/luci-app-swrt-power/root/usr/libexec/rpcd/luci.swrt_power
           shellcheck -s sh package/luci-app-swrt-power/root/usr/libexec/rpcd/luci.swrt_power
           sh -n package/swrt-pcat-manager/files/swrt-pcat-manager.init
