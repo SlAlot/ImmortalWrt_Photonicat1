@@ -63,7 +63,7 @@ return view.extend({
         ].filter(Boolean);
         var root = E('div', { 'class': 'np-root nph-root', id: 'wlmbstart' }, [
             E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css') + '?v=1.1.5' }),
-            E('link', { rel: 'stylesheet', href: L.resource('wlmbstart/home.css') + '?v=1.0.0' }),
+            E('link', { rel: 'stylesheet', href: L.resource('wlmbstart/home.css') + '?v=1.0.0-r3' }),
             E('div', { 'class': 'nph-heading' }, [E('div', {}, [E('p', { 'class': 'nph-eyebrow' }, 'NETWORK PANEL'),
                 E('h2', {}, ['设备概览 ', value('hostname', 'span')]), E('p', { 'class': 'nph-muted' }, '网络与设备状态，一目了然')]),
                 E('span', { 'class': 'nph-date' }, now.toLocaleDateString())]),
@@ -124,7 +124,7 @@ return view.extend({
             set('rat', primary.networkMode || primary.rat);
             set('rsrp', panel.number(primary.rsrp, ' dBm')); set('sinr', panel.number(primary.sinr, ' dB'));
             var seconds = s.uptimeSeconds;
-            set('uptime', Number.isFinite(seconds) ? Math.floor(seconds / 86400) + '天 ' + Math.floor(seconds / 3600 % 24) + '时' : '—');
+            set('uptime', Number.isFinite(seconds) ? (seconds >= 86400 ? Math.floor(seconds / 86400) + '天 ' + Math.floor(seconds / 3600 % 24) + '时' : Math.floor(seconds / 3600) + '时 ' + Math.floor(seconds / 60 % 60) + '分') : '—');
             set('uptime-note', '自上次启动');
             set('down', panel.bytes(rates && rates.downloadBytesPerSecond, true)); set('up', panel.bytes(rates && rates.uploadBytesPerSecond, true));
             set('interface', s.network ? s.network.interface : '无有效上网接口');

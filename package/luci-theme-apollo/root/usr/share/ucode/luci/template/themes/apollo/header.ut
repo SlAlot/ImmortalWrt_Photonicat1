@@ -17,8 +17,8 @@
         <meta name="darkreader-lock">
         <title>{{ striptags(`${boardinfo.hostname ?? '?'}${dispatched?.title ? ` | ${_(dispatched.title)}` : ''}`) }}</title>
         <script>try{var npMode=localStorage.getItem('network-panel-appearance');if(['auto','light','dark'].includes(npMode))document.documentElement.dataset.theme=npMode;}catch(e){}</script>
-        <link rel="stylesheet" href="{{ media }}/compat.css?v=1.0.0">
-        <link rel="stylesheet" href="{{ media }}/theme.css?v=1.0.0">
+        <link rel="stylesheet" href="{{ media }}/compat.css?v=1.0.0-r3">
+        <link rel="stylesheet" href="{{ media }}/theme.css?v=1.0.0-r3">
         {% if (node?.css): %}<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">{% endif %}
         {% if (css): %}<style>{{ css }}</style>{% endif %}
         <script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>

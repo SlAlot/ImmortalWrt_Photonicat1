@@ -30,7 +30,7 @@ const ui = {menu:{load:async()=>tree,getChildren:n=>Object.entries(n.children||{
 const L = {env:{dispatchpath:['admin','wlmbstart'],requestpath:['admin','wlmbstart']},url:(...parts)=>'/cgi-bin/luci/'+parts.join('/'),resource:p=>'/luci-static/resources/'+p};
 function E(tag,attrs={},children) {
     const el=document.createElement(tag);
-    for(const [key,value] of Object.entries(attrs)) if(value!=null) {if(key==='hidden')el.hidden=!!value;else el.setAttribute(key,String(value));}
+    for(const [key,value] of Object.entries(attrs)) if(value!=null) el.setAttribute(key,String(value));
     for(const child of [children].flat(Infinity)) if(child!=null)el.appendChild(child.nodeType?child:document.createTextNode(String(child)));
     return el;
 }
@@ -71,6 +71,16 @@ async function refresh() {window.__wlmbReadCache.at=0;await Promise.all(callback
     snapshot=fixture();snapshot.system.board.hostname='<img src=x onerror=alert(1)>';await refresh();assert.equal(content.querySelectorAll('img').length,0,'Untrusted board text must remain text');
     failing=true;await refresh();assert.equal(document.getElementById('npt-battery').textContent,'—');assert.match(content.textContent,/暂不可用/);failing=false;
     snapshot=fixture();await refresh();
+    // Native LuCI E() stringifies boolean attributes: hidden="false" still hides.
+    L.env.dispatchpath=['admin','network','wireless'];
+    document.getElementById('npt-menu').replaceChildren();
+    menu.render(tree);
+    assert.equal(document.getElementById('npt-group-network').hidden,false,'Active submenu must be expanded on initial render');
+    assert.equal(document.querySelector('[aria-controls="npt-group-network"]').getAttribute('aria-expanded'),'true');
+    assert.equal(document.getElementById('npt-group-system').hidden,true);
+    const login=E('input',{name:'luci_password'});document.body.appendChild(login);
+    menu.__init__();assert(document.body.classList.contains('npt-login'),'Login must not start authenticated theme polling');
+    login.remove();document.body.classList.remove('npt-login');
     // Keep a faithful static DOM preview for visual review, separate from the firmware.
     const preview=process.env.NP_PREVIEW;
     if(preview){

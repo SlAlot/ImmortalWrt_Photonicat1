@@ -16,6 +16,7 @@ var glyphs = {
 
 return baseclass.extend({
     __init__: function() {
+        if (document.querySelector('input[name="luci_password"]')) { document.body.classList.add('npt-login'); return; }
         var self = this;
         Promise.all([ui.menu.load(), panel.assets().catch(function() {})]).then(function(loaded) { self.render(loaded[0]); });
     },
@@ -59,7 +60,8 @@ return baseclass.extend({
                     'aria-current':active ? 'page' : null }, [panel.icon(icon), E('span', {}, _(child.title))])));
                 return;
             }
-            var submenu = E('ul', { 'class':'npt-submenu', id:'npt-group-' + child.name, hidden:!active });
+            var submenu = E('ul', { 'class':'npt-submenu', id:'npt-group-' + child.name });
+            submenu.hidden = !active;
             var toggle = E('button', { type:'button', 'class':'npt-menu-link npt-group-toggle' + (active ? ' is-current' : ''),
                 'aria-expanded':String(active), 'aria-controls':submenu.id }, [panel.icon(icon), E('span', {}, _(child.title)), panel.icon('chevron')]);
             toggle.addEventListener('click', function() { var open = toggle.getAttribute('aria-expanded') !== 'true'; toggle.setAttribute('aria-expanded', String(open)); submenu.hidden = !open; });

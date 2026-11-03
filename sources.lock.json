@@ -81,13 +81,13 @@
   "luci_ui": {
     "luci-theme-apollo": {
       "repository": "https://github.com/SlAlot/luci-theme-apollo",
-      "commit": "f84b1194a70059b1899100cf26e6b4002023c944",
-      "runtime_sha256": "07a6acda4589bcf471233a5fb378c7f0a865b2a8e2328c0abb254ff9d95d5502"
+      "commit": "b64e4c61fe46ed0c74beec0136b63c2de655e15d",
+      "runtime_sha256": "e79ba06dc97e4b7152abf1f19158439dcc5c9f3d5435cc93e778563b19c78b45"
     },
     "luci-app-wlmbstart": {
       "repository": "https://github.com/SlAlot/luci-app-wlmbstart",
-      "commit": "2870cba459c5c0f97f59906bbeb6df96a10a3b3d",
-      "runtime_sha256": "51db4ab525085dec2d05529e4344e6d60f85ef87de6cd0877227d8c622d523ec"
+      "commit": "008bd5d736bcaaa5a26a0bcc4d97141ffdcdb155",
+      "runtime_sha256": "6b810f36e190d511c93b2f49af690cac2cc17af94b8575b1056c55cf87e02665"
     }
   }
 }
