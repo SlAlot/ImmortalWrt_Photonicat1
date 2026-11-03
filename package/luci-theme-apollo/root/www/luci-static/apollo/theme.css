@@ -46,3 +46,9 @@ html[data-theme=dark] .np-theme{--np-accent:#3484ff;--np-text:#f5f5f7;--np-muted
 @media(max-width:780px){.np-theme .npt-icon-button{width:44px;height:44px;min-height:44px}.npt-battery{min-height:44px}.npt-submenu .npt-menu-link{min-height:44px}}
 
 .np-theme #maincontent.container{max-width:none}.np-theme #maincontent>*{max-width:1440px;margin-inline:auto}.npt-footer{padding-inline:max(32px,calc((100vw - var(--npt-sidebar) - 1440px)/2))}@media(max-width:780px){.npt-footer{padding-inline:16px}}
+
+/* Apollo owns appearance while embedded applications inherit its live tokens. */
+.np-theme .np-root{--np-accent:inherit!important;--np-text:inherit!important;--np-muted:inherit!important;--np-line:inherit!important;--np-card:inherit!important;--np-soft:inherit!important;--np-bg:inherit!important;--np-track:inherit!important;--np-blue:inherit!important;--np-orange:inherit!important;--np-green:inherit!important;--np-purple:inherit!important;--np-danger:inherit!important;color-scheme:inherit!important}
+.np-theme.np-luci-surface{background:var(--np-bg)!important;--np-page-surface:var(--np-bg)!important;--np-page-text:var(--np-text)!important}
+.np-theme #wlmb-panel .np-heading-actions>button:first-child{display:none!important}
+.np-theme #swrt-disk-keepalive{--dk-bg:var(--np-card)!important;--dk-text:var(--np-text)!important;--dk-muted:var(--np-muted)!important;--dk-line:var(--np-line)!important;--dk-input:var(--np-soft)!important;--dk-accent:var(--np-accent)!important;--dk-danger:var(--np-danger)!important}
