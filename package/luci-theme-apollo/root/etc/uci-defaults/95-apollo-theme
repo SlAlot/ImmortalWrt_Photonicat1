@@ -1,5 +1,13 @@
 #!/bin/sh
 uci set luci.themes.Apollo='/luci-static/apollo'
+# A preserved configuration may still advertise the removed firmware theme.
+if [ ! -d /www/luci-static/argon ]; then
+    for key in Argon argon; do
+        if [ "$(uci -q get "luci.themes.$key")" = /luci-static/argon ]; then
+            uci -q delete "luci.themes.$key"
+        fi
+    done
+fi
 case "$(uci -q get luci.main.mediaurlbase)" in
     ''|/luci-static/argon|/luci-static/bootstrap) uci set luci.main.mediaurlbase='/luci-static/apollo' ;;
 esac
