@@ -4,19 +4,20 @@ repo_dir=$(cd "$(dirname "$0")/.." && pwd)
 build_dir=${1:?Usage: prepare.sh IMMORTALWRT_DIRECTORY}
 build_dir=$(realpath "$build_dir")
 test -f "$build_dir/include/toplevel.mk"
+python3 "$repo_dir/scripts/check-ui-plugins.py"
 
 cp "$repo_dir/.config" "$build_dir/.config"
 cp "$repo_dir/feeds.conf.default" "$build_dir/feeds.conf.default"
 cp -a "$repo_dir/files" "$build_dir/"
 mkdir -p "$build_dir/package/swrt"
 cp -a "$repo_dir/package/wlmb-server" "$build_dir/package/swrt/"
+cp -a "$repo_dir/package/luci-theme-apollo" "$repo_dir/package/luci-app-wlmbstart" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/luci-lib-docker" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/luci-app-swrt-upgrade" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/luci-app-swrt-disk-keepalive" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/swrt-pcat-manager" "$repo_dir/package/luci-app-swrt-power" "$build_dir/package/swrt/"
 find "$build_dir/files/etc/uci-defaults" "$build_dir/files/etc/hotplug.d" -type f -exec chmod 755 {} +
 chmod 755 "$build_dir/files/usr/share/qmodem/swrt-scan-once"
-chmod 755 "$build_dir/files/usr/libexec/swrt-apk-status"
 chmod 755 "$build_dir/files/usr/libexec/swrt-autogrow"
 
 cd "$build_dir"
@@ -27,18 +28,12 @@ python3 "$repo_dir/scripts/patch-autogrow.py" "$build_dir"
 python3 "$repo_dir/scripts/patch-feeds.py" "$build_dir"
 python3 "$repo_dir/scripts/patch-docker.py" "$build_dir"
 python3 "$repo_dir/scripts/patch-power-integration.py" "$build_dir"
-python3 "$repo_dir/scripts/patch-quickstart.py" "$build_dir"
 ./scripts/feeds update -i luci qmodem
 # Install standard feeds first, then the requested integrations. Do not force
 # unrelated NAS packages over existing ImmortalWrt packages.
 for feed in packages luci routing telephony video qmodem istore nas nas_luci; do
     ./scripts/feeds install -a -p "$feed"
 done
-
-# The upstream frontend explicitly forbids re-minification. Lua is needed by
-# QuickStart's template/proxy and iStore even on current JavaScript LuCI.
-test -f feeds/nas_luci/luci/luci-app-quickstart/Makefile
-grep -q 'LUCI_MINIFY_JS:=0' feeds/nas_luci/luci/luci-app-quickstart/Makefile
 
 # The old tree shipped a complete stale copy of PassWall's firewall script.
 # Current pinned upstream has the MWAN mark exemption; verify it before using it.

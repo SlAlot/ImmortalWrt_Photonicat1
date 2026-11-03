@@ -2,9 +2,11 @@
 
 [![Build](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml/badge.svg)](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml)
 
-**SWRT 2.3** 是面向光影猫一代（Photonicat 1 / RK3568）的 ImmortalWrt 定制固件，由 **SlAlot** 维护。支持 **1+8、2+16、4+64 GB** 配置，不适用于二代。
+**SWRT** 是面向光影猫一代（Photonicat 1 / RK3568）的 ImmortalWrt 定制固件，由 **SlAlot** 维护。支持 **1+8、2+16、4+64 GB** 配置，不适用于二代。
 
 [下载固件](https://github.com/SlAlot/ImmortalWrt_Photonicat1/releases/latest) · [版本说明](docs/RELEASE-NOTES.md) · [兼容性说明](docs/COMPATIBILITY.md) · [问题反馈](https://github.com/SlAlot/ImmortalWrt_Photonicat1/issues)
+
+当前源码默认使用 [Apollo 主题](https://github.com/SlAlot/luci-theme-apollo) 与 [wlmbstart 首页](https://github.com/SlAlot/luci-app-wlmbstart)。已发布固件的界面以对应 Release 说明为准。
 
 ## 功能
 
@@ -12,7 +14,8 @@
 | --- | --- |
 | 蜂窝网络 | QModem Next、Tom AT 核心与 Tom 拨号组件，支持模组发现、拨号和短信管理 |
 | 网络面板 | wlmb-server，查看信号、模组、网络状态与电池电量，支持与 QModem 共享通道 |
-| 管理首页 | iStore QuickStart，内置网络面板磁贴，手机端左右滑动 |
+| 管理首页 | wlmbstart，复用网络面板 Rust 状态接口，展示流量、系统与电池 |
+| 默认主题 | Apollo，统一侧栏、表单、按钮与二级菜单，适配手机和平板 |
 | 应用与容器 | iStore、Docker、Docker Compose，独立 Docker 管理菜单 |
 | 设备管理 | 光影猫管理、电池状态、CPU 调频、DiskMan 磁盘管理、ttyd 终端 |
 | 网络工具 | MWAN3、PassWall、OpenClash、SmartDNS、ZeroTier |
@@ -40,7 +43,7 @@
 | 主机名 | `S-Photonicat1` |
 | 管理地址 | [192.168.17.1](http://192.168.17.1) |
 | 管理账号 / 密码 | `root` / 空密码，首次登录后设置 |
-| 网络面板 | 首页磁贴或“服务 → 网络面板”，独立端口 `1117` |
+| 网络面板 | 首页快捷入口或“服务 → 网络面板”，独立端口 `1117` |
 | 终端 | “系统 → 终端”，Banner 为 SWRT |
 | 系统 | ImmortalWrt `openwrt-25.12`，使用 APK 软件包 |
 | 流量卸载 | 软件、硬件选项默认均开启 |

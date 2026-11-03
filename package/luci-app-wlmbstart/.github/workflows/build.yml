@@ -1,0 +1,60 @@
+name: Check and build packages
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - run: npm ci --prefix tests --ignore-scripts
+      - run: node tests/validate.cjs
+      - run: git diff --check
+  package:
+    needs: validate
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [x86_64-24.10.2, x86_64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SDK feed layout
+        run: |
+          mkdir -p "$RUNNER_TEMP/feed/luci-app-wlmbstart"
+          cp -a Makefile LICENSE LICENSES root "$RUNNER_TEMP/feed/luci-app-wlmbstart/"
+      - name: Build standard architecture-independent OpenWrt package
+        uses: openwrt/gh-action-sdk@f5813d30eeef3534b58ac7e79c5d8842b6035434
+        env:
+          ARCH: ${{ matrix.sdk }}
+          FEED_DIR: ${{ runner.temp }}/feed
+          PACKAGES: luci-app-wlmbstart
+          FEEDNAME: panel
+          V: s
+      - name: Verify package was produced
+        run: |
+          find bin -type f \( -name 'luci-app-wlmbstart*.ipk' -o -name 'luci-app-wlmbstart*.apk' \) > package-files.txt
+          test -s package-files.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-wlmbstart-${{ matrix.sdk }}
+          path: |
+            bin/packages/**/luci-app-wlmbstart*.ipk
+            bin/packages/**/luci-app-wlmbstart*.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: logs-${{ matrix.sdk }}
+          path: logs/
+          if-no-files-found: ignore

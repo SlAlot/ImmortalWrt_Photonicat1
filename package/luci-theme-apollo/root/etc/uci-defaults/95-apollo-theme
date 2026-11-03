@@ -1,0 +1,8 @@
+#!/bin/sh
+uci set luci.themes.Apollo='/luci-static/apollo'
+case "$(uci -q get luci.main.mediaurlbase)" in
+    ''|/luci-static/argon|/luci-static/bootstrap) uci set luci.main.mediaurlbase='/luci-static/apollo' ;;
+esac
+uci commit luci
+rm -f /tmp/luci-indexcache /tmp/luci-indexcache.*
+exit 0

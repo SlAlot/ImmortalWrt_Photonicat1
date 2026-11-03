@@ -40,8 +40,6 @@ jobs:
           shellcheck -s sh files/etc/uci-defaults/98-swrt-docker-storage
           sh -n files/usr/libexec/swrt-autogrow files/lib/preinit/79-swrt-autogrow
           shellcheck -s sh files/usr/libexec/swrt-autogrow files/lib/preinit/79-swrt-autogrow
-          sh -n files/usr/libexec/swrt-apk-status
-          shellcheck -s sh files/usr/libexec/swrt-apk-status
           sh -n files/usr/share/qmodem/swrt-scan-once
           shellcheck -s sh files/usr/share/qmodem/swrt-scan-once
           sh -n package/luci-app-swrt-upgrade/root/usr/libexec/swrt-upgrade
@@ -61,6 +59,11 @@ jobs:
           sh -n package/wlmb-server/files/swrt-wlmb-battery package/wlmb-server/files/swrt-wlmb-battery.init
           shellcheck -s sh package/wlmb-server/files/swrt-wlmb-battery
           shellcheck -s sh -e SC2034,SC2317 package/wlmb-server/files/swrt-wlmb-battery.init
+          npm ci --prefix package/luci-theme-apollo/tests --ignore-scripts
+          node tests/test_apollo_wlmbstart.cjs
+          python3 scripts/check-ui-plugins.py
+          sh -n package/luci-theme-apollo/root/etc/uci-defaults/95-apollo-theme
+          shellcheck -s sh package/luci-theme-apollo/root/etc/uci-defaults/95-apollo-theme
           node tests/test_power_frontend.cjs
           python3 -m unittest discover -s tests -v
           if ! sudo modprobe f2fs; then

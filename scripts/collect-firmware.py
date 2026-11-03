@@ -33,8 +33,8 @@ required = {"qmodem", "tom_modem", "ubus-at-daemon", "quectel-CM-5G-M",
             "smartmontools", "btrfs-progs", "kmod-fs-btrfs", "lsblk",
             "luci-app-swrt-upgrade", "jq-full", "flock", "coreutils-sha256sum",
             "coreutils-stat", "luci-app-swrt-disk-keepalive", "coreutils-dd", "coreutils-timeout",
-            "luci-app-qmodem-next", "wlmb-server", "quickstart",
-            "luci-app-quickstart", "luci-app-store", "dockerd", "docker",
+            "luci-app-qmodem-next", "wlmb-server", "luci-app-wlmbstart",
+            "luci-theme-apollo", "luci-app-store", "dockerd", "docker",
             "swrt-pcat-manager", "luci-app-swrt-power", "luci-mod-battstatus", "glib2", "jsonfilter",
             "luci-app-passwall", "luci-app-openclash",
             "kmod-mt7921e", "kmod-mt7921u", "kmod-mt7921s",
@@ -50,7 +50,7 @@ updater_version = next((line.split(" - ", 1)[1].strip()
 updater_match = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:$|[-+~])", updater_version)
 assert updater_match and tuple(map(int, updater_match.groups())) >= (1, 1, 1), \
     f"Online updater lacks the stage2 handoff fix: {updater_version}"
-forbidden = {"luci-app-docker", "pcat-mgr", "pcat-manager", "pcat-manager-v1", "kmod-photonicat-pm", "luci-app-modemband", "modemband", "luci-app-sms-tool-js",
+forbidden = {"luci-theme-argon", "luci-app-quickstart", "quickstart", "luci-app-docker", "pcat-mgr", "pcat-manager", "pcat-manager-v1", "kmod-photonicat-pm", "luci-app-modemband", "modemband", "luci-app-sms-tool-js",
              "luci-app-qmodem", "luci-app-qmodem-sms", "luci-app-qmodem-mwan",
              "luci-app-qmodem-ttl", "luci-app-qmodem-hc",
              "qmodem-uplink-manager", "luci-app-qmodem-uplink",

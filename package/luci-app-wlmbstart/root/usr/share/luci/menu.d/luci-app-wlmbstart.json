@@ -1,0 +1,8 @@
+{
+  "admin/wlmbstart": {
+    "title": "首页",
+    "order": 0,
+    "action": { "type": "view", "path": "wlmbstart/home" },
+    "depends": { "acl": ["luci-app-wlmbstart"] }
+  }
+}

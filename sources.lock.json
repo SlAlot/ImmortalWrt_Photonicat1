@@ -77,5 +77,17 @@
     "commit": "119964435eb7bc6384eed8ecee7bd7104b6e8ee2",
     "path": "target/linux/rockchip/patches-6.12/990-photonicat-pm-add-driver.patch",
     "sha256": "40a5a540f6b3169cf590cbf246548ea78cdbf287e61a1c764c242f0d1a86ff99"
+  },
+  "luci_ui": {
+    "luci-theme-apollo": {
+      "repository": "https://github.com/SlAlot/luci-theme-apollo",
+      "commit": "cc9e61d582f5486b775d2b5ea2939ce90109ef7f",
+      "runtime_sha256": "b402a52fe9ef0f7a20b4ad0e533195b02eee97ac99a4824b1687ee532a91887a"
+    },
+    "luci-app-wlmbstart": {
+      "repository": "https://github.com/SlAlot/luci-app-wlmbstart",
+      "commit": "2870cba459c5c0f97f59906bbeb6df96a10a3b3d",
+      "runtime_sha256": "51db4ab525085dec2d05529e4344e6d60f85ef87de6cd0877227d8c622d523ec"
+    }
   }
 }

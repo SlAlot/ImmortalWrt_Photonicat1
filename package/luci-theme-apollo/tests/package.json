@@ -1,0 +1,8 @@
+{
+  "name": "luci-theme-apollo-tests",
+  "private": true,
+  "version": "1.0.0",
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

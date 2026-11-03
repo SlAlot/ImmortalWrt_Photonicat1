@@ -17,7 +17,7 @@ required = [
     "PACKAGE_kmod-mhi-net", "PACKAGE_kmod-mhi-pci-generic",
     "PACKAGE_kmod-mhi-wwan-ctrl", "PACKAGE_kmod-mhi-wwan-mbim",
     "PACKAGE_qmodem-smsd", "PACKAGE_sms-forwarder-next", "PACKAGE_wlmb-server",
-    "PACKAGE_luci-app-quickstart", "PACKAGE_quickstart", "PACKAGE_luci-app-store",
+    "PACKAGE_luci-app-wlmbstart", "PACKAGE_luci-theme-apollo", "PACKAGE_luci-app-store",
     "PACKAGE_ttyd", "PACKAGE_luci-app-ttyd", "PACKAGE_luci-i18n-ttyd-zh-cn",
     "PACKAGE_luci-app-diskman", "PACKAGE_luci-i18n-diskman-zh-cn",
     "PACKAGE_parted", "PACKAGE_blkid", "PACKAGE_smartmontools",
@@ -50,6 +50,7 @@ required = [
     "TARGET_ROOTFS_EXT4FS", "TARGET_ROOTFS_SQUASHFS",
 ]
 forbidden = [
+    "PACKAGE_luci-theme-argon", "PACKAGE_luci-app-quickstart", "PACKAGE_quickstart",
     "PACKAGE_luci-app-docker",
     "PACKAGE_pcat-mgr", "PACKAGE_pcat-manager", "PACKAGE_pcat-manager-v1", "PACKAGE_kmod-photonicat-pm",
     "FEED_video", "FEED_istore", "FEED_nas", "FEED_nas_luci", "FEED_qmodem",

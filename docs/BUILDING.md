@@ -30,3 +30,13 @@
 发布前检查必需包与冲突包、更新器版本、内核电源配置、镜像摘要、MBR、RK3568 Loader、U-Boot 和设备元数据；失败即停止发布。Release 保留 SquashFS、ext4 和 `sha256sums` 三个附件。
 
 Actions 的构建诊断附件保存最终配置、清单和日志，保留 7 天；固件附件保留 14 天。源码、单项测试与模拟结果不能替代具体硬件组合的运行验证。
+
+## 首页与主题
+
+- [luci-theme-apollo](https://github.com/SlAlot/luci-theme-apollo)：默认主题，复用网络面板视觉语言并保留原生 LuCI 表单。
+- [luci-app-wlmbstart](https://github.com/SlAlot/luci-app-wlmbstart)：默认首页，读取 Rust 后端的状态缓存，不新增 AT 查询。
+- iStore 商店保留，QuickStart 首页与 Argon 不再编译。
+
+两个仓库独立构建安装包。固件内保留经过审核的运行文件快照；`sources.lock.json` 的 `luci_ui` 固定来源、提交和快照摘要，构建前由 `check-ui-plugins.py` 核验。同步上游改动时同时更新包目录与锁文件。
+
+界面尺寸、字体及交互约定见两个项目的 `STYLE.md`。浏览器尺寸检查应覆盖 360 / 390 / 768 / 1024 / 1440px，并包括登录、菜单、长表格和弹窗。

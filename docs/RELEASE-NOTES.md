@@ -1,9 +1,11 @@
-## SWRT · 光影猫一代 v2.3
+## SWRT · 光影猫一代固件
 
 适用于 **Photonicat 1 / RK3568**，支持 **1+8、2+16、4+64 GB**，不适用于二代。作者：**SlAlot**。
 
 ### 版本内容
 
+- 默认使用 Apollo 主题与 wlmbstart 首页，统一表单、导航、按钮和电池状态展示，适配手机与平板。
+- 首页复用网络面板 Rust 状态接口，iStore 商店继续保留，移除 QuickStart 首页与 Argon。
 - 网络面板更新到 wlmb-server 1.1.5，接入光影猫电池电量，在设备状态中显示。
 - 电量采集服务开机启动，每 20 秒只读查询现有电源服务；失败时显示不可用，不将失败当作零电量。
 - 一代硬件接口不能确认实际充电电流，充电状态保持未知，不把外部供电误报为正在充电。
@@ -12,7 +14,7 @@
 - 按稳定标识识别硬盘，显示读取时间、次数和错误，避免拔插后因设备名称变化而保活其他硬盘。TF 卡和内置 eMMC 不参与。
 - 保留 v2.0 的在线升级修复、官方电源适配及现有网络、容器功能。
 - eMMC 首次开机自动扩容，后续升级保留已扩容的分区边界。
-- 集成 QModem Next（Tom 核心）、网络面板、iStore 首页与商店、Docker / Compose、DiskMan、ttyd 和光影猫管理。
+- 集成 QModem Next（Tom 核心）、网络面板、Apollo、wlmbstart 与 iStore 商店、Docker / Compose、DiskMan、ttyd 和光影猫管理。
 - 包含 QCA9377、WCN6855、MT7603、MT76x2、MT7921 / MT7922 无线驱动及常用 USB 驱动，软、硬件流量卸载默认开启。
 
 默认管理地址 **192.168.17.1**，账号 **root**，初始密码为空；主机名 **S-Photonicat1**。
@@ -21,8 +23,8 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `immortalwrt-photonicat-1-squashfs-sysupgrade-2.3.img.gz` | SquashFS 固件 |
-| `immortalwrt-photonicat-1-ext4-sysupgrade-2.3.img.gz` | ext4 固件 |
+| `immortalwrt-photonicat-1-squashfs-sysupgrade-版本号.img.gz` | SquashFS 固件 |
+| `immortalwrt-photonicat-1-ext4-sysupgrade-版本号.img.gz` | ext4 固件 |
 | `sha256sums` | SHA-256 校验清单 |
 
 **v1.9 及更早版本升级：**先备份，在“系统 → 备份与升级”上传同类型 `.img.gz`，无需解压，建议不保留配置。不要使用旧 SWRT 在线更新器重试；进入 v2.0 后，后续再使用在线更新。

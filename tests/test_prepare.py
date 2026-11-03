@@ -6,7 +6,6 @@ import tempfile
 import textwrap
 import unittest
 from feed_fixtures import write_qmodem_runtime
-from test_quickstart import write_quickstart
 from test_board_power import write_board_power
 from test_docker import write_docker
 
@@ -55,7 +54,7 @@ class PreparePipelineTests(unittest.TestCase):
         self.repo = self.root / "repo"
         self.repo.mkdir()
         for name in ("scripts", "files", "package", "patches"):
-            shutil.copytree(ROOT / name, self.repo / name)
+            shutil.copytree(ROOT / name, self.repo / name, ignore=shutil.ignore_patterns("node_modules", ".git"))
         for name in (".config", "feeds.conf.default", "sources.lock.json", "diy.sh"):
             shutil.copy2(ROOT / name, self.repo / name)
         self.build = self.repo / "openwrt"
@@ -72,7 +71,6 @@ class PreparePipelineTests(unittest.TestCase):
             "feeds/luci/applications/luci-app-weechat/Makefile": "LUCI_DEPENDS:=+weechat \n",
             "feeds/qmodem/application/qmodem/Makefile": "PCIe_DRIVER:kmod-mhi-wwan \n",
             "package/kernel/linux/modules/netdevices.mk": "define KernelPackage/mhi-net\nendef\n",
-            "feeds/nas_luci/luci/luci-app-quickstart/Makefile": "LUCI_MINIFY_JS:=0\n",
             "feeds/luci/applications/luci-app-passwall/root/usr/share/passwall/nftables.sh": "MWAN3_RULE_ARGS=test\n",
         }
         for name, content in fixtures.items():
@@ -80,7 +78,6 @@ class PreparePipelineTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
         write_qmodem_runtime(self.build)
-        write_quickstart(self.build)
         write_docker(self.build)
         platform = self.build / 'target/linux/rockchip/armv8/base-files/lib/upgrade/platform.sh'
         platform.parent.mkdir(parents=True, exist_ok=True)
