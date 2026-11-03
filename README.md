@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml/badge.svg)](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml)
 
-**SWRT 2.1** 是面向光影猫一代（Photonicat 1 / RK3568）的 ImmortalWrt 定制固件，由 **SlAlot** 维护。支持 **1+8、2+16、4+64 GB** 配置，不适用于二代。
+**SWRT 2.3** 是面向光影猫一代（Photonicat 1 / RK3568）的 ImmortalWrt 定制固件，由 **SlAlot** 维护。支持 **1+8、2+16、4+64 GB** 配置，不适用于二代。
 
 [下载固件](https://github.com/SlAlot/ImmortalWrt_Photonicat1/releases/latest) · [版本说明](docs/RELEASE-NOTES.md) · [兼容性说明](docs/COMPATIBILITY.md) · [问题反馈](https://github.com/SlAlot/ImmortalWrt_Photonicat1/issues)
 
@@ -11,7 +11,7 @@
 | 功能 | 内容 |
 | --- | --- |
 | 蜂窝网络 | QModem Next、Tom AT 核心与 Tom 拨号组件，支持模组发现、拨号和短信管理 |
-| 网络面板 | wlmb-server，查看信号、模组和网络状态，支持与 QModem 共享通道 |
+| 网络面板 | wlmb-server，查看信号、模组、网络状态与电池电量，支持与 QModem 共享通道 |
 | 管理首页 | iStore QuickStart，内置网络面板磁贴，手机端左右滑动 |
 | 应用与容器 | iStore、Docker、Docker Compose，独立 Docker 管理菜单 |
 | 设备管理 | 光影猫管理、电池状态、CPU 调频、DiskMan 磁盘管理、ttyd 终端 |
@@ -53,8 +53,8 @@
 
 | 下载文件 | 用途 |
 | --- | --- |
-| `immortalwrt-photonicat-1-squashfs-sysupgrade-2.1.img.gz` | SquashFS 固件 |
-| `immortalwrt-photonicat-1-ext4-sysupgrade-2.1.img.gz` | ext4 固件 |
+| `immortalwrt-photonicat-1-squashfs-sysupgrade-2.3.img.gz` | SquashFS 固件 |
+| `immortalwrt-photonicat-1-ext4-sysupgrade-2.3.img.gz` | ext4 固件 |
 | `sha256sums` | SHA-256 校验清单 |
 
 ### 第一次刷入：USB 线刷

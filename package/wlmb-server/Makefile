@@ -1,11 +1,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wlmb-server
-PKG_VERSION:=1.1.3
+PKG_VERSION:=1.1.5
 PKG_RELEASE:=1
 PKG_SOURCE:=wlmb-server-$(PKG_VERSION)-aarch64_generic.ipk
 PKG_SOURCE_URL:=https://github.com/SlAlot/wlmb-server/releases/download/v$(PKG_VERSION)
-PKG_HASH:=2d694ca84db172491fb3bd48b99f877b12296dfa13e9ce210a6769d4d4174b2f
+PKG_HASH:=9ad400f64b83203b9d298b195d661d9feebadb38c967a6f860523aa539606c26
 PKG_LICENSE:=LicenseRef-WLMB-NonCommercial
 PKG_MAINTAINER:=SlAlot
 
@@ -16,7 +16,7 @@ define Package/wlmb-server
   CATEGORY:=Network
   TITLE:=Network Panel by SlAlot
   URL:=https://github.com/SlAlot/wlmb-server
-  DEPENDS:=@aarch64 +rpcd +rpcd-mod-iwinfo +luci-base +uci
+  DEPENDS:=@aarch64 +rpcd +rpcd-mod-iwinfo +luci-base +uci +swrt-pcat-manager +jq-full
 endef
 
 define Package/wlmb-server/description
@@ -43,6 +43,9 @@ endef
 
 define Package/wlmb-server/install
 	$(CP) $(PKG_BUILD_DIR)/payload/. $(1)/
+	$(INSTALL_DIR) $(1)/usr/libexec $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/swrt-wlmb-battery $(1)/usr/libexec/swrt-wlmb-battery
+	$(INSTALL_BIN) ./files/swrt-wlmb-battery.init $(1)/etc/init.d/swrt-wlmb-battery
 endef
 
 $(eval $(call BuildPackage,wlmb-server))

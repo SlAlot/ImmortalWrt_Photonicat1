@@ -79,7 +79,7 @@ const flush = async () => { await new Promise(resolve => setImmediate(resolve));
 (async () => {
     const available = harness();
     assert.deepEqual(walk(available.root).filter(n => n.tag === 'link').map(n => n.attrs.href), [
-        '/resources/wlmb-server/panel.css?v=1.1.3', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-upgrade.css?v=1.1.0'
+        '/resources/wlmb-server/panel.css?v=1.1.5', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-upgrade.css?v=1.1.0'
     ]);
     const restore = walk(available.root).find(n => n.tag === 'a' && n.textContent === '恢复配置备份');
     assert.equal(restore.attrs.href, '/cgi-bin/luci/admin/system/flash', 'Restore uses the native upload and restore workflow');

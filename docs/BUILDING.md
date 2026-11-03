@@ -4,7 +4,7 @@
 
 打开 [Build SWRT Photonicat1](https://github.com/SlAlot/ImmortalWrt_Photonicat1/actions/workflows/swrt.yml)，点击 **Run workflow**，选择 `main`。
 
-- `release_version`：留空自动递增；指定时填写高于已有发布的版本，例如 `2.1`。编号按 `1.9 → 2.0 → 2.1` 递增。
+- `release_version`：留空自动递增；指定时填写高于已有发布的版本，例如 `2.3`。编号按 `1.9 → 2.0 → 2.1` 递增。
 - `publish_release`：开启则检查和编译成功后发布，关闭则仅保存固件附件。
 - 构建相关文件推送到 `main` 会触发编译；维护提交可用 `[skip firmware]` 仅运行检查。手动触发仍完整构建。
 - 文档整理提交使用 `[skip ci]` 避免仅因组件 README 路径触发固件编译。
@@ -22,6 +22,8 @@
 | `.github/workflows/swrt.yml` | 自动检查、构建和发布 |
 
 更新上游组件时同步锁文件及对应摘要。网络面板使用固定版本的 ARM64 musl 程序，并核对 SHA-256。
+
+网络面板 1.1.5 的电量由 `swrt-wlmb-battery` 开机采集服务接入：每 20 秒只读查询现有电源服务，原子写入 RAM 中的 `/var/run/wlmb-server/battery.json`，由已有 `/api/status` 返回。采集失败立即标为不可用，停止更新超过 60 秒后由网络面板判定过期。光影猫一代不能确认实际充电电流，`charging` 保持 `null`，不把外部供电当作正在充电。接口规范见 [上游电池接入说明](https://github.com/SlAlot/wlmb-server/blob/v1.1.5/docs/BATTERY.zh-CN.md)。
 
 ## 成品检查
 

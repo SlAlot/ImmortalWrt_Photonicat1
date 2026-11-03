@@ -1,0 +1,68 @@
+#!/bin/sh
+# Photonicat v1 provider for wlmb-server's fixed battery report contract.
+# Read the existing power manager; never access the MCU or modem directly.
+report_dir=/var/run/wlmb-server
+power_client=/usr/libexec/swrt-power
+temporary=
+sleeper=
+daemon=0
+umask 077
+
+publish() {
+    [ ! -L "$report_dir" ] || return 1
+    mkdir -p "$report_dir" || return 1
+    [ -d "$report_dir" ] && [ "$(stat -c %u "$report_dir")" = 0 ] || return 1
+    chmod 700 "$report_dir" || return 1
+    temporary=$(mktemp "$report_dir/.battery.XXXXXX") || return 1
+    # v1 exposes external power, not actual charge current: keep charging unknown.
+    printf '{"version":1,"percent":%s,"charging":null,"updatedAt":%s}\n' \
+        "$1" "$2" > "$temporary" || return 1
+    chmod 600 "$temporary" || return 1
+    mv -f "$temporary" "$report_dir/battery.json" || return 1
+    temporary=
+}
+
+sample() {
+    measured_at=$(date +%s) || return 1
+    percent=null
+    if reading=$("$power_client" battery 2>/dev/null); then
+        # Require exactly one successful, typed report. Zero is a valid reading.
+        percent=$(printf '%s' "$reading" | jq -ers '
+            if length == 1 and .[0].ok == true then
+                .[0].percentage | select(type == "number") |
+                select(. >= 0 and . <= 100 and . == floor)
+            else empty end') || percent=null
+    fi
+    # Failure is published explicitly, preventing fallback to an inferred sysfs
+    # charging state or continuation of the previous valid percentage.
+    publish "$percent" "$measured_at"
+}
+
+cleanup() {
+    if [ -n "$sleeper" ]; then
+        kill "$sleeper" 2>/dev/null || true
+        wait "$sleeper" 2>/dev/null || true
+    fi
+    [ -z "$temporary" ] || rm -f "$temporary"
+    if [ "$daemon" = 1 ]; then
+        publish null "$(date +%s)" || true
+    fi
+}
+trap cleanup 0
+trap 'exit 0' HUP INT TERM
+
+case "${1:-}" in
+    --once) sample ;;
+    '')
+        daemon=1
+        publish null "$(date +%s)" || exit 1
+        while :; do
+            sample || exit 1
+            sleep 20 &
+            sleeper=$!
+            wait "$sleeper" || true
+            sleeper=
+        done
+        ;;
+    *) exit 2 ;;
+esac

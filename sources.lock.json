@@ -67,10 +67,10 @@
     "sha256": "9ea7890bba5a36d52104e9fa873c29dc7389303f3092d8b7bf6d42d720017b63"
   },
   "wlmb": {
-    "version": "1.1.3",
-    "asset": "wlmb-server-1.1.3-aarch64_generic.ipk",
-    "sha256": "2d694ca84db172491fb3bd48b99f877b12296dfa13e9ce210a6769d4d4174b2f",
-    "url": "https://github.com/SlAlot/wlmb-server/releases/download/v1.1.3"
+    "version": "1.1.5",
+    "asset": "wlmb-server-1.1.5-aarch64_generic.ipk",
+    "sha256": "9ad400f64b83203b9d298b195d661d9feebadb38c967a6f860523aa539606c26",
+    "url": "https://github.com/SlAlot/wlmb-server/releases/download/v1.1.5"
   },
   "photonicat_kernel_power": {
     "repository": "https://github.com/photonicat/photonicat_openwrt",

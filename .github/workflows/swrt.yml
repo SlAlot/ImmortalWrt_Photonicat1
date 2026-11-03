@@ -58,6 +58,9 @@ jobs:
           sh -n package/swrt-pcat-manager/files/swrt-power-migrate
           shellcheck -s sh package/swrt-pcat-manager/files/swrt-power-migrate
           shellcheck -s sh -e SC2034,SC2317 package/swrt-pcat-manager/files/swrt-pcat-manager.init
+          sh -n package/wlmb-server/files/swrt-wlmb-battery package/wlmb-server/files/swrt-wlmb-battery.init
+          shellcheck -s sh package/wlmb-server/files/swrt-wlmb-battery
+          shellcheck -s sh -e SC2034,SC2317 package/wlmb-server/files/swrt-wlmb-battery.init
           node tests/test_power_frontend.cjs
           python3 -m unittest discover -s tests -v
           if ! sudo modprobe f2fs; then

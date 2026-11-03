@@ -171,7 +171,7 @@ return view.extend({
         function card(title, children, badge) { return E('section', { 'class': 'np-native-card' }, [
             E('div', { 'class': 'np-native-card-head' }, [ E('strong', {}, title), badge || '' ]), E('div', { 'class': 'np-native-card-body' }, children) ]); }
         var root = E('div', { id: 'swrt-power', 'class': 'np-root swrt-page' }, [
-            E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css') + '?v=1.1.3' }),
+            E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css') + '?v=1.1.5' }),
             E('link', { rel: 'stylesheet', href: L.resource('swrt-ui.css') + '?v=1.0.4' }),
             E('link', { rel: 'stylesheet', href: L.resource('swrt-power.css') + '?v=1.0.5' }),
             E('div', { 'class': 'np-page-heading' }, [ E('div', {}, [ E('h2', { 'class': 'np-page-title' }, '光影猫管理'),

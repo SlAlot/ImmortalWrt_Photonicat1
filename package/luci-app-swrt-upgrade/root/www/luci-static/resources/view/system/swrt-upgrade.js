@@ -167,7 +167,7 @@ return view.extend({
             ]);
         }
         root = E('div', { id: 'swrt-upgrade', 'class': 'np-root swrt-page' }, [
-            E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css') + '?v=1.1.3' }),
+            E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css') + '?v=1.1.5' }),
             E('link', { rel: 'stylesheet', href: L.resource('swrt-ui.css') + '?v=1.0.4' }),
             E('link', { rel: 'stylesheet', href: L.resource('swrt-upgrade.css') + '?v=1.1.0' }),
             E('div', { 'class': 'np-page-heading' }, [

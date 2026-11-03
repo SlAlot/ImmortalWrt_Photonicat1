@@ -45,7 +45,7 @@ function harness(readonly = false) {
 (async () => {
     const h = harness();
     assert.deepEqual(walk(h.root).filter(n => n.tag === 'link').map(n => n.attrs.href), [
-        '/resources/wlmb-server/panel.css?v=1.1.3', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-power.css?v=1.0.5'
+        '/resources/wlmb-server/panel.css?v=1.1.5', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-power.css?v=1.0.5'
     ]);
     assert.equal(h.calls.length, 0, 'Opening the page never changes policy');
     assert.equal(h.button('保存电源策略').disabled, true, 'Save is enabled only after editing');
