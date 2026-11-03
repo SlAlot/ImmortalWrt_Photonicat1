@@ -25,14 +25,12 @@ endef
 define Package/luci-theme-apollo/postrm
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	if [ "$$1" = remove ]; then
-		uci -q delete luci.themes.Apollo
-		if [ "$$(uci -q get luci.main.mediaurlbase)" = /luci-static/apollo ]; then
-			uci set luci.main.mediaurlbase='/luci-static/bootstrap'
-		fi
-		uci commit luci
-		rm -f /tmp/luci-indexcache /tmp/luci-indexcache.*
+	uci -q delete luci.themes.Apollo
+	if [ "$$(uci -q get luci.main.mediaurlbase)" = /luci-static/apollo ]; then
+		uci set luci.main.mediaurlbase='/luci-static/bootstrap'
 	fi
+	uci commit luci
+	rm -f /tmp/luci-indexcache /tmp/luci-indexcache.*
 }
 endef
 

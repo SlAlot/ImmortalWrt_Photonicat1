@@ -21,9 +21,6 @@ permissions:
 defaults:
   run:
     shell: bash
-concurrency:
-  group: swrt-${{ github.ref }}
-  cancel-in-progress: false
 jobs:
   validate:
     runs-on: ubuntu-24.04
@@ -75,6 +72,9 @@ jobs:
           luac5.1 -p package/luci-lib-docker/luasrc/model/docker.lua
           git diff --check
   build:
+    concurrency:
+      group: swrt-${{ github.ref }}
+      cancel-in-progress: false
     # Packaging-only maintenance can skip compilation while retaining checks.
     if: github.event_name != 'pull_request' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip firmware]'))
     needs: validate
