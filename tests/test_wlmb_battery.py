@@ -45,6 +45,10 @@ class BatteryProducerTests(unittest.TestCase):
         source = (PACKAGE / "files/swrt-wlmb-battery").read_text()
         source = source.replace("report_dir=/var/run/wlmb-server", f"report_dir='{self.reports}'")
         source = source.replace("power_client=/usr/libexec/swrt-power", f"power_client='{self.client}'")
+        # CI runs unprivileged. Only the disposable copy trusts the fixture's
+        # owner; the installed producer continues to require root ownership.
+        source = source.replace('"$(stat -c %u "$report_dir")" = 0',
+                                f'"$(stat -c %u "$report_dir")" = {os.getuid()}')
         source = source.replace("sleep 20 &", "sleep 0.2 &")
         self.worker.write_text(source)
         self.client.write_text('#!/bin/sh\ncat "' + str(self.root / "reply") + '"\n')
