@@ -52,3 +52,8 @@ html[data-theme=dark] .np-theme{--np-accent:#3484ff;--np-text:#f5f5f7;--np-muted
 .np-theme.np-luci-surface{background:var(--np-bg)!important;--np-page-surface:var(--np-bg)!important;--np-page-text:var(--np-text)!important}
 .np-theme #wlmb-panel .np-heading-actions>button:first-child{display:none!important}
 .np-theme #swrt-disk-keepalive{--dk-bg:var(--np-card)!important;--dk-text:var(--np-text)!important;--dk-muted:var(--np-muted)!important;--dk-line:var(--np-line)!important;--dk-input:var(--np-soft)!important;--dk-accent:var(--np-accent)!important;--dk-danger:var(--np-danger)!important}
+
+/* Bind native LuCI widget colors to the same palette, including dropdowns and checkboxes. */
+.np-theme{--background-color-high:var(--np-card);--background-color-medium:var(--np-soft);--background-color-low:var(--np-bg);--text-color-highest:var(--np-text);--text-color-high:var(--np-text);--text-color-medium:var(--np-muted);--text-color-low:var(--np-muted);--border-color-high:var(--np-line);--border-color-medium:var(--np-line);--border-color-low:var(--np-line);--primary-color-high:var(--np-accent);--primary-color-medium:var(--np-accent);--primary-color-low:var(--np-accent);--on-primary-color:#fff;--error-color-high:var(--np-danger);--success-color-high:var(--np-green);--warn-color-high:var(--np-orange)}
+.np-theme input[type=checkbox]:not(.cbi-input-invalid),.np-theme input[type=radio]:not(.cbi-input-invalid){--fg-color:var(--np-accent)}
+html[data-theme=dark]{color-scheme:dark}html[data-theme=light]{color-scheme:light}@media(prefers-color-scheme:dark){html:not([data-theme=light]){color-scheme:dark}}
