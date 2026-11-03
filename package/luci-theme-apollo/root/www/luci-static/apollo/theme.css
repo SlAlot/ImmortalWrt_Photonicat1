@@ -82,3 +82,8 @@ html[data-theme=dark]{color-scheme:dark}html[data-theme=light]{color-scheme:ligh
 @media(max-width:780px){.np-theme .cbi-tblsection{overflow-x:auto}.np-theme .cbi-tblsection>.table{min-width:680px}.np-theme #modal_overlay>.modal{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}}
 
 @media(max-width:780px){.np-theme .table .cbi-value-field{width:auto}.np-theme .table [data-name=_stat]{min-width:260px}.np-theme .table [data-name=_badge]{min-width:180px}}
+
+.np-theme.npt-login #maincontent>form{padding:28px;border:1px solid var(--np-line);border-radius:16px;background:var(--np-card)}
+.np-theme.npt-login .cbi-map{padding:0;border:0;margin:0 0 20px;background:none}
+.np-theme.npt-login .cbi-value-title{text-align:left}
+.np-theme.npt-login .cbi-page-actions{padding:0}
