@@ -6,9 +6,9 @@ from pathlib import Path
 
 
 def snapshot(root):
-    files = [root / 'Makefile', root / 'LICENSE', *sorted((root / 'root').rglob('*')), *sorted((root / 'LICENSES').rglob('*'))]
+    files = [root / 'Makefile', root / 'LICENSE', *(root / 'root').rglob('*'), *(root / 'LICENSES').rglob('*')]
     digest = hashlib.sha256()
-    for file in files:
+    for file in sorted(files, key=lambda file: file.relative_to(root).as_posix()):
         if not file.is_file():
             continue
         name = file.relative_to(root).as_posix().encode()
