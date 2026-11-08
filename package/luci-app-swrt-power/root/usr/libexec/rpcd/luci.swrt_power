@@ -1,9 +1,10 @@
 #!/bin/sh
 case "$1" in
-    list) printf '%s\n' '{"status":{},"battery":{},"configure":{"mode":"","minutes":0,"start":"","stop":"","revision":"","confirm":0}}' ;;
+    list) printf '%s\n' '{"status":{},"battery":{},"battery_capacity":{},"set_battery_capacity":{"capacity_mah":0},"record_battery_full":{},"reset_battery_calibration":{},"configure":{"mode":"","minutes":0,"start":"","stop":"","revision":"","confirm":0}}' ;;
     call)
         case "$2" in
-            status|battery|configure) /usr/libexec/swrt-power "$2" ;;
+            status|battery|configure|battery_capacity|set_battery_capacity|record_battery_full|reset_battery_calibration)
+                exec /usr/libexec/swrt-power "$2" ;;
             *) printf '%s\n' '{"ok":false,"message":"不支持的操作"}' ;;
         esac
         ;;

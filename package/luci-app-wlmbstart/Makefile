@@ -2,9 +2,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-wlmbstart
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 PKGARCH:=all
-PKG_LICENSE:=LicenseRef-WLMB-NonCommercial AND MIT
+PKG_LICENSE:=LicenseRef-WLMB-NonCommercial AND MIT AND ISC
 PKG_MAINTAINER:=SlAlot
 
 include $(INCLUDE_DIR)/package.mk
@@ -21,6 +21,18 @@ define Package/luci-app-wlmbstart
 endef
 
 define Build/Compile
+endef
+
+define Package/luci-app-wlmbstart/conffiles
+/etc/config/wlmbstart
+endef
+
+define Package/luci-app-wlmbstart/postinst
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	/etc/init.d/rpcd reload 2>/dev/null
+fi
+exit 0
 endef
 
 define Package/luci-app-wlmbstart/install

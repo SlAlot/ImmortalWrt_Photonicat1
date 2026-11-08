@@ -1,0 +1,37 @@
+'use strict';
+
+import { basename, glob, readlink, realpath } from 'fs';
+
+function driver(path) {
+    return basename(readlink(path + '/device/driver') || '');
+}
+
+function usb_parent(path) {
+    let device = realpath(path + '/device');
+    let parts = match(device || '', /^(.+)\/[0-9]+-[0-9]+([.][0-9]+)*:[0-9]+[.][0-9]+(\/.*)?$/);
+    return parts ? parts[1] : null;
+}
+
+function cellular_devices() {
+    // 同一 USB 设备上的模组串口可以区分 CDC 数据口和普通 USB 网卡。
+    let modems = {};
+    for (let port in glob('/sys/class/tty/ttyUSB*') || []) {
+        if (!match(driver(port), /^(option1?|qcserial|sierra)$/))
+            continue;
+
+        let parent = usb_parent(port);
+        if (parent)
+            modems[parent] = true;
+    }
+
+    let devices = [];
+    for (let path in glob('/sys/class/net/*') || []) {
+        let name = driver(path);
+        if (match(name, /^(qmi_wwan(_q|_s)?|cdc_mbim|huawei_cdc_ncm|sierra_net|mhi_net|mhi_wwan_mbim|mtk_t7xx|iosm|rmnet)$/) ||
+            (match(name, /^(cdc_ether|cdc_ncm|rndis_host)$/) && modems[usb_parent(path)]))
+            push(devices, basename(path));
+    }
+    return { devices, time: time() };
+}
+
+return { wlmbstart: { cellularDevices: { call: cellular_devices } } };

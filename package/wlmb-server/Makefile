@@ -1,11 +1,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wlmb-server
-PKG_VERSION:=1.1.5
-PKG_RELEASE:=1
+PKG_VERSION:=1.1.6
+PKG_RELEASE:=2
 PKG_SOURCE:=wlmb-server-$(PKG_VERSION)-aarch64_generic.ipk
 PKG_SOURCE_URL:=https://github.com/SlAlot/wlmb-server/releases/download/v$(PKG_VERSION)
-PKG_HASH:=9ad400f64b83203b9d298b195d661d9feebadb38c967a6f860523aa539606c26
+PKG_HASH:=c4cb5f7c796eb411e7db5865124ddc49255e0d7723088c4fb6ff488a73a524f6
 PKG_LICENSE:=LicenseRef-WLMB-NonCommercial
 PKG_MAINTAINER:=SlAlot
 
@@ -31,6 +31,7 @@ endef
 define Build/Prepare
 	$(INSTALL_DIR) $(PKG_BUILD_DIR)/payload
 	tar -xOf $(DL_DIR)/$(PKG_SOURCE) data.tar.gz | tar -xz -C $(PKG_BUILD_DIR)/payload
+	patch --batch --forward -p1 -d $(PKG_BUILD_DIR)/payload < $(CURDIR)/files/swrt-panel.patch
 	test -x $(PKG_BUILD_DIR)/payload/usr/sbin/wlmb-server
 	test -f $(PKG_BUILD_DIR)/payload/usr/share/wlmb-server/LICENSE
 endef

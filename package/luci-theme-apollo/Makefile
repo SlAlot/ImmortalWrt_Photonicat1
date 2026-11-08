@@ -2,9 +2,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-apollo
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 PKGARCH:=all
-PKG_LICENSE:=LicenseRef-WLMB-NonCommercial AND Apache-2.0 AND MIT
+PKG_LICENSE:=LicenseRef-WLMB-NonCommercial AND Apache-2.0 AND MIT AND ISC
 PKG_MAINTAINER:=SlAlot
 
 include $(INCLUDE_DIR)/package.mk

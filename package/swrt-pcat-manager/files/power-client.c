@@ -143,6 +143,114 @@ static struct json_object *battery(void) {
     json_object_put(reply);
     return out;
 }
+
+struct battery_profile {
+    int capacity_mah, full_reference;
+};
+
+static struct battery_profile read_profile(void) {
+    struct battery_profile profile = { .capacity_mah = 6800 };
+    char *file = path("/etc/swrt-battery-capacity"), *contents = NULL;
+    if (g_file_get_contents(file, &contents, NULL, NULL)) {
+        char **lines = g_strsplit(g_strstrip(contents), "\n", 2);
+        guint64 capacity, reference;
+        if (lines[0] && g_ascii_string_to_unsigned(g_strstrip(lines[0]), 10, 1000, 20000, &capacity, NULL)) {
+            profile.capacity_mah = (int)capacity;
+            if (lines[1] && g_ascii_string_to_unsigned(g_strstrip(lines[1]), 10, 90, 99, &reference, NULL))
+                profile.full_reference = (int)reference;
+        }
+        g_strfreev(lines);
+    }
+    g_free(contents);
+    g_free(file);
+    return profile;
+}
+
+static struct json_object *profile_reply(struct battery_profile profile) {
+    struct json_object *out = json_object_new_object();
+    number(out, "capacity_mah", profile.capacity_mah);
+    number(out, "full_reference", profile.full_reference);
+    return out;
+}
+
+static struct json_object *save_profile(struct battery_profile profile) {
+    char *file = path("/etc/swrt-battery-capacity");
+    char *contents = g_strdup_printf("%d\n%d\n", profile.capacity_mah, profile.full_reference);
+    bool saved = g_file_set_contents_full(file, contents, -1,
+        G_FILE_SET_CONTENTS_CONSISTENT | G_FILE_SET_CONTENTS_DURABLE, 0600, NULL);
+    g_free(contents);
+    g_free(file);
+    if (saved) return profile_reply(profile);
+    message("电池显示设置保存失败");
+    return NULL;
+}
+
+static void add_display_percentage(struct json_object *reading) {
+    int raw = json_object_get_int(field(reading, "percentage"));
+    int reference = read_profile().full_reference;
+    int display = raw;
+    // Keep the stock curve through 80%, tapering in the correction only above it.
+    if (reference && raw > 80)
+        display = raw >= reference ? 100 : 80 + ((raw - 80) * 20 + (reference - 80) / 2) / (reference - 80);
+    number(reading, "display_percentage", display);
+    number(reading, "full_reference", reference);
+}
+
+static int measure_full_reference(void) {
+    int min_mv = 5000, max_mv = 0, min_percent = 100, max_percent = 0, sum = 0;
+    for (int i = 0; i < 3; i++) {
+        if (i) g_usleep(5 * G_USEC_PER_SEC);
+        struct json_object *reading = battery();
+        if (!reading) return 0;
+        int mv = json_object_get_int(field(reading, "battery_mv"));
+        int percent = json_object_get_int(field(reading, "percentage"));
+        // The v1 manual distinguishes the 4.7 V stop threshold from the 4.9 V recommendation.
+        bool supplied = json_object_get_boolean(field(reading, "external_power")) &&
+                        json_object_get_int(field(reading, "supply_mv")) >= 4700;
+        json_object_put(reading);
+        if (!supplied) {
+            message("请保持外部供电，输入电压须达到 4.7 V");
+            return 0;
+        }
+        if (percent < 90) {
+            message("请确认充电完成后再校准（原始电量须达到 90%）");
+            return 0;
+        }
+        min_mv = MIN(min_mv, mv);
+        max_mv = MAX(max_mv, mv);
+        min_percent = MIN(min_percent, percent);
+        max_percent = MAX(max_percent, percent);
+        sum += percent;
+    }
+    if (max_mv - min_mv > 20 || max_percent - min_percent > 1) {
+        message("电池读数还不稳定，请稍后重试");
+        return 0;
+    }
+    // Median of three samples; 100% already agrees with the stock display.
+    return sum - min_percent - max_percent;
+}
+
+static struct json_object *read_request(void) {
+    char buffer[4097];
+    size_t n = fread(buffer, 1, sizeof(buffer), stdin);
+    return n < sizeof(buffer) ? parse(buffer, n) : NULL;
+}
+
+static struct json_object *update_profile(const char *method, struct json_object *input) {
+    struct battery_profile profile = read_profile();
+    if (!strcmp(method, "set_battery_capacity")) {
+        int capacity;
+        if (!integer(input, "capacity_mah", 1000, 20000, &capacity)) {
+            message("请输入 1000～20000 mAh 的整数容量");
+            return NULL;
+        }
+        if (capacity == profile.capacity_mah) return profile_reply(profile);
+        return save_profile((struct battery_profile){ .capacity_mah = capacity });
+    }
+    if (!profile.full_reference) return profile_reply(profile);
+    profile.full_reference = 0;
+    return save_profile(profile);
+}
 static void clear_snapshot(struct snapshot *s) {
     if (s->car) json_object_put(s->car);
     if (s->schedule) json_object_put(s->schedule);
@@ -296,19 +404,42 @@ int main(int argc, char **argv) {
                      !strcmp(g_strstrip(board), "ariaboard,photonicat");
     g_free(board_file); g_free(board);
     if (!supported) { message("仅支持光影猫一代"); goto finish; }
-    if (argc != 2 || (strcmp(argv[1], "status") && strcmp(argv[1], "battery") && strcmp(argv[1], "configure"))) {
-        message("不支持的操作"); goto finish;
+    if (argc != 2) { message("不支持的操作"); goto finish; }
+    const char *method = argv[1];
+    if (!strcmp(method, "battery_capacity")) {
+        out = profile_reply(read_profile());
+        goto finish;
     }
     char *lock_path = path("/var/run/swrt-power.lock");
     int lock = open(lock_path, O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, 0600);
     g_free(lock_path);
     if (lock < 0 || flock(lock, LOCK_EX | LOCK_NB)) { message("电源管理正在处理另一项请求，请稍后重试"); goto finish; }
-    if (!strcmp(argv[1], "battery")) out = battery();
-    else {
+    if (!strcmp(method, "battery")) {
+        out = battery();
+        if (out) add_display_percentage(out);
+    } else if (!strcmp(method, "set_battery_capacity") || !strcmp(method, "reset_battery_calibration")) {
+        struct json_object *input = !strcmp(method, "set_battery_capacity") ? read_request() : NULL;
+        out = update_profile(method, input);
+        if (input) json_object_put(input);
+    } else if (!strcmp(method, "record_battery_full")) {
+        struct battery_profile before = read_profile();
+        flock(lock, LOCK_UN);
+        int reference = measure_full_reference();
+        if (!reference) goto finish;
+        if (flock(lock, LOCK_EX | LOCK_NB)) {
+            message("电源管理正在处理另一项请求，请稍后重试"); goto finish;
+        }
+        struct battery_profile current = read_profile();
+        if (current.capacity_mah != before.capacity_mah || current.full_reference != before.full_reference) {
+            message("电池显示设置已变化，请刷新页面后重试"); goto finish;
+        }
+        current.full_reference = reference == 100 ? 0 : reference;
+        out = current.full_reference == before.full_reference ? profile_reply(current) : save_profile(current);
+    } else if (!strcmp(method, "status") || !strcmp(method, "configure")) {
         struct json_object *input = NULL;
-        if (!strcmp(argv[1], "configure")) {
-            char buffer[4097]; size_t n = fread(buffer, 1, sizeof(buffer), stdin);
-            if (n == sizeof(buffer) || !(input = parse(buffer, n))) { message("请求参数无效"); goto finish; }
+        if (!strcmp(method, "configure")) {
+            input = read_request();
+            if (!input) { message("请求参数无效"); goto finish; }
         }
         struct snapshot current = {0};
         bool valid = snapshot(&current);
@@ -317,6 +448,7 @@ int main(int argc, char **argv) {
             if (input) { clear_snapshot(&current); valid = snapshot(&current); }
             if (valid) {
                 out = json_object_new_object();
+                add_display_percentage(current.battery);
                 json_object_object_add(out, "battery", json_object_get(current.battery));
                 json_object_object_add(out, "car", json_object_get(current.car));
                 json_object_object_add(out, "events", json_object_get(field(current.schedule, "event-list")));
@@ -325,7 +457,7 @@ int main(int argc, char **argv) {
         }
         if (input) json_object_put(input);
         clear_snapshot(&current);
-    }
+    } else message("不支持的操作");
 finish:
     if (!out) {
         out = json_object_new_object();

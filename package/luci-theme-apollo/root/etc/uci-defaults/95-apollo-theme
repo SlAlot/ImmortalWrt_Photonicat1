@@ -1,6 +1,6 @@
 #!/bin/sh
 uci set luci.themes.Apollo='/luci-static/apollo'
-# A preserved configuration may still advertise the removed firmware theme.
+# 保留配置升级时，清理已无对应资源的 Argon 菜单项。
 if [ ! -d /www/luci-static/argon ]; then
     for key in Argon argon; do
         if [ "$(uci -q get "luci.themes.$key")" = /luci-static/argon ]; then

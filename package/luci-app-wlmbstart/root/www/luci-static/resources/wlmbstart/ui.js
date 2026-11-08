@@ -3,65 +3,102 @@
 'require rpc';
 
 var readStatus = rpc.declare({ object:'network-panel', method:'status', params:['modem'] });
-var cache = window.__wlmbReadCache || (window.__wlmbReadCache = { pending:null, at:0 }), assetsReady;
-var extra = {
-    battery:[['rect',{x:2,y:6,width:18,height:12,rx:3}],['path',{d:'M22 10v4'}]],
-    cpu:[['rect',{x:5,y:5,width:14,height:14,rx:3}],['rect',{x:9,y:9,width:6,height:6,rx:1}],['path',{d:'M9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3'}]],
-    memory:[['rect',{x:3,y:6,width:18,height:12,rx:2}],['path',{d:'M7 10v4m5-4v4m5-4v4M7 18v3m5-3v3m5-3v3'}]],
-    disk:[['rect',{x:3,y:3,width:18,height:18,rx:3}],['circle',{cx:12,cy:10,r:4}],['path',{d:'m12 10 5 7M6 18h2'}]],
-    store:[['path',{d:'M4 7h16l1 14H3L4 7Zm4 0V5a4 4 0 0 1 8 0v2'}]],
-    docker:[['path',{d:'M3 12h17c0 6-3 9-9 9-5 0-8-3-8-9Zm17 0c2 0 3-2 3-3M5 8h4v4H5Zm4-4h4v4H9Zm0 4h4v4H9Zm4 0h4v4h-4Z'}]],
-    shield:[['path',{d:'m12 2 8 3v6c0 5-4 9-8 11-4-2-8-6-8-11V5l8-3Z'}],['path',{d:'m8 12 3 3 5-6'}]],
-    menu:[['path',{d:'M4 6h16M4 12h16M4 18h16'}]],
-    chevron:[['path',{d:'m9 5 7 7-7 7'}]],
-    sun:[['circle',{cx:12,cy:12,r:4}],['path',{d:'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5'}]],
-    logout:[['path',{d:'M9 4H4v16h5m5-13 5 5-5 5m-6-5h11'}]],
-    clock:[['circle',{cx:12,cy:12,r:9}],['path',{d:'M12 7v5l3 2'}]],
-    apps:[['rect',{x:3,y:3,width:7,height:7,rx:2}],['rect',{x:14,y:3,width:7,height:7,rx:2}],['rect',{x:3,y:14,width:7,height:7,rx:2}],['rect',{x:14,y:14,width:7,height:7,rx:2}]]
+// 网络面板缺少对应图标时使用线形图标。
+var glyphs = {
+    firmwareUpdate: [
+        ['circle', {cx:12,cy:12,r:10}],
+        ['path', {d:'m16 12-4-4-4 4'}],
+        ['path', {d:'M12 16V8'}]
+    ],
+    store: [["path",{"d":"M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"}],["path",{"d":"M3 6h18"}],["path",{"d":"M16 10a4 4 0 0 1-8 0"}]],
+    docker: [["path",{"d":"M22 12.54c-1.804 -.345 -2.701 -1.08 -3.523 -2.94c-.487 .696 -1.102 1.568 -.92 2.4c.028 .238 -.32 1 -.557 1h-14c0 5.208 3.164 7 6.196 7c4.124 .022 7.828 -1.376 9.854 -5c1.146 -.101 2.296 -1.505 2.95 -2.46z"}],["path",{"d":"M5 10h3v3h-3z"}],["path",{"d":"M8 10h3v3h-3z"}],["path",{"d":"M11 10h3v3h-3z"}],["path",{"d":"M8 7h3v3h-3z"}],["path",{"d":"M11 7h3v3h-3z"}],["path",{"d":"M11 4h3v3h-3z"}],["path",{"d":"M4.571 18c1.5 0 2.047 -.074 2.958 -.78"}],["path",{"d":"M10 16l0 .01"}]],
+    memory: [["path",{"d":"M6 19v-3"}],["path",{"d":"M10 19v-3"}],["path",{"d":"M14 19v-3"}],["path",{"d":"M18 19v-3"}],["path",{"d":"M8 11V9"}],["path",{"d":"M16 11V9"}],["path",{"d":"M12 11V9"}],["path",{"d":"M2 15h20"}],["path",{"d":"M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1.1a2 2 0 0 0 0 3.837V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-5.1a2 2 0 0 0 0-3.837Z"}]],
+    temperature: [["path",{"d":"M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"}]],
+    internet: [["circle",{"cx":"12","cy":"12","r":"10"}],["path",{"d":"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"}],["path",{"d":"M2 12h20"}]],
 };
-function icon(name, percent) {
-    var ns='http://www.w3.org/2000/svg', svg=document.createElementNS(ns,'svg'), upstream=window.WLMBIcons;
-    svg.setAttribute('class','np-icon'); svg.setAttribute('aria-hidden','true'); svg.setAttribute('focusable','false');
-    if (upstream && upstream.paths[name]) {
-        svg.setAttribute('viewBox',upstream.viewBox); svg.setAttribute('fill','currentColor');
-        var path=document.createElementNS(ns,'path'); path.setAttribute('d',upstream.paths[name]); path.setAttribute('transform',upstream.transform); svg.appendChild(path);
-    } else {
-        svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor');
-        svg.setAttribute('stroke-width','1.7'); svg.setAttribute('stroke-linecap','round'); svg.setAttribute('stroke-linejoin','round');
-        (extra[name] || extra.apps).forEach(function(row) { var node=document.createElementNS(ns,row[0]); Object.keys(row[1]).forEach(function(k){node.setAttribute(k,row[1][k]);}); svg.appendChild(node); });
+
+// 与网络面板共用的 SVG 图形。
+var panelGlyphs = {
+    tower: "M18.374 16.396Q18.593 16.659 18.934 16.648Q19.275 16.637 19.56 16.352Q20.725 15.077 21.363 13.429Q22 11.78 22 9.956Q22 8.11 21.363 6.462Q20.725 4.813 19.56 3.56Q19.275 3.253 18.934 3.253Q18.593 3.253 18.374 3.495Q18.132 3.758 18.187 4.066Q18.242 4.374 18.505 4.681Q19.451 5.714 19.956 7.066Q20.462 8.418 20.462 9.956Q20.462 11.473 19.956 12.824Q19.451 14.176 18.505 15.231Q18.242 15.516 18.187 15.824Q18.132 16.132 18.374 16.396ZM5.648 16.396Q5.868 16.132 5.813 15.824Q5.758 15.516 5.516 15.231Q4.549 14.176 4.044 12.824Q3.538 11.473 3.538 9.956Q3.538 8.418 4.044 7.066Q4.549 5.714 5.516 4.681Q5.758 4.374 5.813 4.066Q5.868 3.758 5.648 3.495Q5.407 3.253 5.066 3.253Q4.725 3.253 4.44 3.56Q3.275 4.813 2.637 6.462Q2 8.11 2 9.956Q2 11.78 2.637 13.429Q3.275 15.077 4.44 16.352Q4.725 16.637 5.066 16.648Q5.407 16.659 5.648 16.396ZM8.462 13.714Q8.681 13.451 8.615 13.143Q8.549 12.835 8.352 12.527Q7.912 12.022 7.703 11.352Q7.495 10.681 7.495 9.956Q7.495 8.484 8.352 7.363Q8.549 7.055 8.615 6.747Q8.681 6.44 8.462 6.198Q8.22 5.912 7.857 5.923Q7.495 5.934 7.253 6.264Q6.637 7.011 6.297 7.956Q5.956 8.901 5.956 9.956Q5.956 10.989 6.297 11.934Q6.637 12.879 7.253 13.648Q7.495 13.956 7.857 13.967Q8.22 13.978 8.462 13.714ZM15.538 13.714Q15.758 13.978 16.121 13.967Q16.484 13.956 16.747 13.648Q17.363 12.879 17.703 11.934Q18.044 10.989 18.044 9.956Q18.044 8.901 17.703 7.956Q17.363 7.011 16.747 6.264Q16.484 5.934 16.121 5.923Q15.758 5.912 15.538 6.198Q15.297 6.44 15.363 6.747Q15.429 7.055 15.648 7.363Q16.505 8.484 16.505 9.956Q16.505 10.681 16.286 11.352Q16.066 12.022 15.648 12.527Q15.429 12.835 15.363 13.143Q15.297 13.451 15.538 13.714ZM12 20.747Q12.33 20.747 12.527 20.527Q12.725 20.308 12.725 19.934V11.473Q13.143 11.275 13.418 10.868Q13.692 10.462 13.692 9.956Q13.692 9.231 13.198 8.736Q12.703 8.242 12 8.242Q11.297 8.242 10.802 8.736Q10.308 9.231 10.308 9.956Q10.308 10.462 10.571 10.868Q10.835 11.275 11.275 11.473V19.934Q11.275 20.308 11.473 20.527Q11.67 20.747 12 20.747Z",
+    wifi: "M3.322 10.863Q3.448 10.989 3.617 10.978Q3.785 10.968 3.912 10.842Q5.513 9.156 7.577 8.272Q9.641 7.387 12 7.387Q14.38 7.387 16.455 8.272Q18.53 9.156 20.109 10.863Q20.236 10.968 20.394 10.968Q20.552 10.968 20.678 10.842L21.879 9.641Q22.11 9.388 21.9 9.135Q20.889 7.893 19.33 6.903Q17.771 5.913 15.897 5.344Q14.022 4.775 12 4.775Q9.999 4.775 8.114 5.344Q6.229 5.913 4.67 6.903Q3.111 7.893 2.1 9.135Q1.89 9.388 2.121 9.641ZM6.924 14.485Q7.219 14.78 7.514 14.443Q8.293 13.58 9.493 13.011Q10.694 12.442 12 12.463Q13.327 12.442 14.517 13.022Q15.707 13.601 16.508 14.485Q16.802 14.78 17.076 14.464L18.424 13.137Q18.656 12.906 18.445 12.653Q17.455 11.452 15.749 10.652Q14.043 9.852 12 9.852Q10.652 9.852 9.42 10.22Q8.188 10.589 7.198 11.221Q6.208 11.853 5.555 12.653Q5.344 12.885 5.576 13.137ZM12 19.225Q12.147 19.225 12.295 19.13Q12.442 19.035 12.695 18.782L14.801 16.76Q15.054 16.529 14.865 16.276Q14.422 15.728 13.664 15.328Q12.906 14.928 12 14.928Q11.073 14.928 10.304 15.349Q9.536 15.77 9.114 16.339Q8.967 16.55 9.199 16.76L11.305 18.782Q11.558 19.035 11.705 19.13Q11.853 19.225 12 19.225Z",
+    ethernet: "M5.04 2H8.532Q10.266 2 10.266 3.758V8.081Q10.266 9.838 8.532 9.838H7.558V15.919Q7.558 17.867 8.675 19.15Q9.791 20.432 12 20.432Q14.209 20.432 15.325 19.15Q16.442 17.867 16.442 15.919V14.162H15.468Q13.734 14.162 13.734 12.428V8.96Q13.734 7.226 15.468 7.226H18.96Q20.694 7.226 20.694 8.96V12.428Q20.694 14.162 18.96 14.162H17.986V15.919Q17.986 17.724 17.249 19.102Q16.513 20.48 15.171 21.24Q13.829 22 12 22Q10.171 22 8.829 21.24Q7.487 20.48 6.751 19.102Q6.014 17.724 6.014 15.919V9.838H5.04Q3.306 9.838 3.306 8.081V3.758Q3.306 2 5.04 2ZM5.04 3.568Q4.874 3.568 4.874 3.758V8.081Q4.874 8.271 5.04 8.271H8.532Q8.698 8.271 8.698 8.081V3.758Q8.698 3.568 8.532 3.568ZM15.468 8.793Q15.302 8.793 15.302 8.96V12.428Q15.302 12.618 15.468 12.618H18.96Q19.126 12.618 19.126 12.428V8.96Q19.126 8.793 18.96 8.793Z",
+    network: "M8.793 9.743 14.874 6.014Q15.563 5.563 15.99 6.276Q16.442 6.964 15.729 7.392L9.648 11.121Q8.96 11.572 8.532 10.86Q8.081 10.171 8.793 9.743ZM8.793 14.257 14.874 17.986Q15.563 18.437 15.99 17.724Q16.442 17.036 15.729 16.608L9.648 12.879Q8.96 12.428 8.532 13.14Q8.081 13.829 8.793 14.257ZM6.347 8.96Q7.202 8.96 7.891 9.375Q8.58 9.791 8.983 10.48Q9.387 11.169 9.387 12Q9.387 12.831 8.983 13.52Q8.58 14.209 7.891 14.625Q7.202 15.04 6.347 15.04Q5.515 15.04 4.827 14.625Q4.138 14.209 3.722 13.52Q3.306 12.831 3.306 12Q3.306 11.169 3.722 10.48Q4.138 9.791 4.827 9.375Q5.515 8.96 6.347 8.96ZM6.347 10.527Q5.753 10.527 5.314 10.955Q4.874 11.382 4.874 12Q4.874 12.618 5.314 13.045Q5.753 13.473 6.347 13.473Q6.964 13.473 7.392 13.045Q7.819 12.618 7.819 12Q7.819 11.382 7.392 10.955Q6.964 10.527 6.347 10.527ZM17.653 2Q18.485 2 19.173 2.416Q19.862 2.831 20.278 3.52Q20.694 4.209 20.694 5.04Q20.694 5.895 20.278 6.584Q19.862 7.273 19.173 7.677Q18.485 8.081 17.653 8.081Q16.798 8.081 16.109 7.677Q15.42 7.273 15.017 6.584Q14.613 5.895 14.613 5.04Q14.613 4.209 15.017 3.52Q15.42 2.831 16.109 2.416Q16.798 2 17.653 2ZM17.653 3.568Q17.036 3.568 16.608 4.007Q16.181 4.447 16.181 5.04Q16.181 5.658 16.608 6.097Q17.036 6.537 17.653 6.537Q18.247 6.537 18.686 6.097Q19.126 5.658 19.126 5.04Q19.126 4.447 18.686 4.007Q18.247 3.568 17.653 3.568ZM17.653 15.919Q18.485 15.919 19.173 16.323Q19.862 16.727 20.278 17.416Q20.694 18.105 20.694 18.96Q20.694 19.791 20.278 20.48Q19.862 21.169 19.173 21.584Q18.485 22 17.653 22Q16.798 22 16.109 21.584Q15.42 21.169 15.017 20.48Q14.613 19.791 14.613 18.96Q14.613 18.105 15.017 17.416Q15.42 16.727 16.109 16.323Q16.798 15.919 17.653 15.919ZM17.653 17.463Q17.036 17.463 16.608 17.903Q16.181 18.342 16.181 18.96Q16.181 19.553 16.608 19.993Q17.036 20.432 17.653 20.432Q18.247 20.432 18.686 19.993Q19.126 19.553 19.126 18.96Q19.126 18.342 18.686 17.903Q18.247 17.463 17.653 17.463Z",
+    terminal: "M5.326 3.663H18.674Q22 3.663 22 7.011V16.989Q22 20.337 18.674 20.337H5.326Q2 20.337 2 16.989V7.011Q2 3.663 5.326 3.663ZM5.326 5.166Q3.503 5.166 3.503 7.011V16.989Q3.503 18.834 5.326 18.834H18.674Q20.497 18.834 20.497 16.989V7.011Q20.497 5.166 18.674 5.166ZM6.328 8.082Q5.759 7.581 6.328 7.011Q6.829 6.51 7.421 7.011L11.339 10.907Q11.841 11.408 11.339 11.909L7.421 15.827Q6.829 16.328 6.328 15.827Q5.759 15.257 6.328 14.756L9.677 11.408ZM13.002 14.825H17.421Q18.173 14.825 18.173 15.576Q18.173 16.328 17.421 16.328H13.002Q12.251 16.328 12.251 15.576Q12.251 14.825 13.002 14.825Z",
+    disk: "M12 2Q7.224 2 4.612 3.244Q2 4.488 2 6.552V17.448Q2 19.512 4.612 20.756Q7.224 22 12 22Q16.776 22 19.388 20.756Q22 19.512 22 17.448V6.552Q22 4.488 19.388 3.244Q16.776 2 12 2ZM12 3.642Q14.736 3.642 16.602 4.065Q18.468 4.488 19.413 5.147Q20.358 5.806 20.358 6.552Q20.358 7.274 19.413 7.933Q18.468 8.592 16.602 9.027Q14.736 9.463 12 9.463Q9.264 9.463 7.398 9.027Q5.532 8.592 4.587 7.933Q3.642 7.274 3.642 6.552Q3.642 5.806 4.587 5.147Q5.532 4.488 7.398 4.065Q9.264 3.642 12 3.642ZM3.642 9.264Q5.259 10.234 7.336 10.657Q9.413 11.08 12 11.08Q14.587 11.08 16.664 10.657Q18.741 10.234 20.358 9.264V12Q20.358 12.721 19.413 13.393Q18.468 14.065 16.602 14.488Q14.736 14.91 12 14.91Q9.264 14.91 7.398 14.488Q5.532 14.065 4.587 13.393Q3.642 12.721 3.642 12ZM3.642 14.736Q5.259 15.682 7.336 16.117Q9.413 16.552 12 16.552Q14.587 16.552 16.664 16.117Q18.741 15.682 20.358 14.736V17.448Q20.358 18.194 19.413 18.853Q18.468 19.512 16.602 19.935Q14.736 20.358 12 20.358Q9.264 20.358 7.398 19.935Q5.532 19.512 4.587 18.853Q3.642 18.194 3.642 17.448Z",
+    chart: "M2.288 17.829 7.766 12.35Q8.366 11.75 8.992 12.2L12.844 14.852L19.348 6.346H16.146Q15.321 6.346 15.321 5.521Q15.321 4.695 16.146 4.695H21.174Q22 4.695 22 5.521V10.549Q22 11.375 21.174 11.375Q20.349 11.375 20.349 10.549V7.897L13.67 16.503Q13.119 17.153 12.469 16.678L8.442 13.951L3.463 19.004Q2.863 19.605 2.288 19.004Q1.712 18.429 2.288 17.829Z",
+    cpu: "M7.96 4.737H16.04Q19.263 4.737 19.263 7.96V16.04Q19.263 19.263 16.04 19.263H7.96Q4.737 19.263 4.737 16.04V7.96Q4.737 4.737 7.96 4.737ZM7.96 6.194Q6.194 6.194 6.194 7.96V16.04Q6.194 17.806 7.96 17.806H16.04Q17.806 17.806 17.806 16.04V7.96Q17.806 6.194 16.04 6.194ZM9.572 8.777H14.428Q15.223 8.777 15.223 9.572V14.428Q15.223 15.223 14.428 15.223H9.572Q8.777 15.223 8.777 14.428V9.572Q8.777 8.777 9.572 8.777ZM10.234 10.234V13.766H13.766V10.234ZM8.049 4.737V2.706Q8.049 2 8.777 2Q9.506 2 9.506 2.706V4.737ZM14.494 4.737V2.706Q14.494 2 15.223 2Q15.951 2 15.951 2.706V4.737ZM8.049 19.263V21.294Q8.049 22 8.777 22Q9.506 22 9.506 21.294V19.263ZM14.494 19.263V21.294Q14.494 22 15.223 22Q15.951 22 15.951 21.294V19.263ZM4.737 8.049H2.706Q2 8.049 2 8.777Q2 9.506 2.706 9.506H4.737ZM4.737 14.494H2.706Q2 14.494 2 15.223Q2 15.951 2.706 15.951H4.737ZM19.263 8.049H21.294Q22 8.049 22 8.777Q22 9.506 21.294 9.506H19.263ZM19.263 14.494H21.294Q22 14.494 22 15.223Q22 15.951 21.294 15.951H19.263Z",
+    down: "M12 22Q12.42 22 12.691 21.679L18.815 15.457Q19.111 15.16 19.111 14.79Q19.111 14.346 18.84 14.086Q18.568 13.827 18.173 13.827Q17.778 13.827 17.506 14.099L14.543 17.16L12.84 19.136L12.938 16.667V2.938Q12.938 2.543 12.667 2.272Q12.395 2 12 2Q11.58 2 11.321 2.272Q11.062 2.543 11.062 2.938V16.667L11.16 19.136L9.432 17.16L6.469 14.099Q6.198 13.827 5.827 13.827Q5.407 13.827 5.148 14.086Q4.889 14.346 4.889 14.79Q4.889 15.16 5.185 15.457L11.284 21.679Q11.58 22 12 22Z",
+    up: "M12 22Q12.42 22 12.679 21.728Q12.938 21.457 12.938 21.062V7.333L12.84 4.864L14.543 6.84L17.531 9.901Q17.802 10.173 18.173 10.173Q18.593 10.173 18.852 9.914Q19.111 9.654 19.111 9.21Q19.111 8.815 18.815 8.543L12.716 2.321Q12.42 2 12 2Q11.58 2 11.284 2.321L5.185 8.543Q4.889 8.84 4.889 9.21Q4.889 9.654 5.16 9.914Q5.432 10.173 5.827 10.173Q6.222 10.173 6.469 9.901L9.457 6.84L11.16 4.864L11.062 7.333V21.062Q11.062 21.457 11.321 21.728Q11.58 22 12 22Z",
+    chevron: "M8.344 20Q8.667 20 8.946 19.763L16.237 12.624Q16.516 12.344 16.516 12Q16.516 11.613 16.237 11.376L8.946 4.258Q8.688 4 8.344 4Q7.978 4 7.731 4.237Q7.484 4.473 7.484 4.839Q7.484 5.183 7.742 5.441L14.452 12L7.742 18.559Q7.484 18.817 7.484 19.161Q7.484 19.527 7.731 19.763Q7.978 20 8.344 20Z",
+};
+
+function icon(name) {
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'nph-icon');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+
+    if (Object.hasOwn(panelGlyphs, name)) {
+        var path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', panelGlyphs[name]);
+        path.setAttribute('fill', 'currentColor');
+        path.setAttribute('stroke', 'none');
+        svg.appendChild(path);
+    } else if (Object.hasOwn(glyphs, name)) {
+        glyphs[name].forEach(function(shape) {
+            var element = document.createElementNS(ns, shape[0]);
+            Object.entries(shape[1]).forEach(function(attribute) {
+                element.setAttribute(attribute[0], attribute[1]);
+            });
+            svg.appendChild(element);
+        });
     }
-    if (name==='battery' && Number.isFinite(percent) && percent>=0 && percent<=100) {
-        var level=document.createElementNS(ns,'rect');
-        Object.entries({x:5,y:9,width:12*percent/100,height:6,rx:1,fill:'currentColor',stroke:'none'}).forEach(function(item){level.setAttribute(item[0],item[1]);});
-        svg.appendChild(level);
-    }
+
     return svg;
 }
-function fresh(s) {
-    return !!s && s.stale === false && Number.isFinite(s.observedAtMs) && s.observedAtMs > 0 && s.observedAtMs <= Date.now()+5000 && Date.now()-s.observedAtMs <= 15000;
+function batteryBadge(reading) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const graphic = document.createElementNS(ns,'svg');
+    graphic.setAttribute('class','wlmb-battery-icon');
+    graphic.setAttribute('viewBox','0 0 28 16');
+    graphic.setAttribute('aria-hidden','true');
+    function draw(tag, attrs) {
+        const node = document.createElementNS(ns,tag);
+        for (const [name,value] of Object.entries(attrs)) node.setAttribute(name,value);
+        graphic.appendChild(node);
+    }
+    draw('rect',{x:1,y:2,width:23,height:12,rx:4,fill:'none',stroke:'currentColor','stroke-width':1.5});
+    draw('rect',{x:25.5,y:5,width:2,height:6,rx:1,fill:'currentColor'});
+    if (reading.percent > 0)
+        draw('rect',{x:4,y:5,width:17 * reading.percent / 100,height:6,rx:1.5,fill:'currentColor'});
+    if (reading.charging)
+        draw('path',{d:'M13 2.8l-4.1 5.9h3.5l-1.2 4.5 5.1-6.4h-3.5z',class:'wlmb-battery-bolt'});
+    return [graphic,E('span',{'class':'wlmb-battery-text'},[
+        E('strong',{},reading.percent+'%'),E('span',{},reading.charging?'充电中':'电量')
+    ])];
 }
-function battery(s) {
-    var b=s && s.battery;
-    if (!fresh(s) || !b || b.available !== true || b.stale !== false || !Number.isInteger(b.percent) || b.percent<0 || b.percent>100 ||
-        !Number.isFinite(b.observedAtMs) || b.observedAtMs<=0 || b.observedAtMs>Date.now()+5000 || Date.now()-b.observedAtMs>(b.source==='provider'?60000:15000))
-        return {available:false,label:'电量暂不可用',percent:null,charging:null};
-    return {available:true,percent:b.percent,charging:b.charging,label:(b.charging===true?'正在充电 · ':'电量 ')+b.percent+'%'};
-}
+
 return baseclass.extend({
-    icon:icon, fresh:fresh, battery:battery,
+    icon:icon,
+    batteryBadge:batteryBadge,
     status:function() {
-        if (!cache.pending || Date.now()-cache.at>=2800) {
-            cache.at=Date.now();
-            cache.pending=readStatus('').then(function(r){if (!r || r.ok!==true || !r.data || typeof r.data!=='object') throw new Error('网络面板服务暂不可用'); return r.data;})
-                .catch(function(err){cache.pending=null;throw err;});
-        }
-        return cache.pending;
+        return readStatus('').then(function(reply) {
+            if (!reply || reply.ok !== true || !reply.data || typeof reply.data !== 'object')
+                throw new Error('网络面板服务暂不可用');
+            return reply.data;
+        });
     },
-    assets:function() {
-        if (window.WLMBIcons) return Promise.resolve();
-        if (!assetsReady) assetsReady=new Promise(function(resolve,reject){var s=document.createElement('script');s.src=L.resource('wlmbstart/icons.js');s.onload=resolve;s.onerror=function(){reject(new Error('图标资源加载失败'));};document.head.appendChild(s);});
-        return assetsReady;
-    },
-    number:function(n,suffix){return Number.isFinite(n)?n.toFixed(1)+(suffix||''):'—';},
-    bytes:function(n,rate){if(!Number.isFinite(n)||n<0)return '—';var u=rate?['B/s','KiB/s','MiB/s','GiB/s']:['B','KiB','MiB','GiB','TiB'],i=0;while(n>=1024&&i<u.length-1){n/=1024;i++;}return n.toFixed(i?1:0)+' '+u[i];}
+    bytes:function(n) {
+        if (!Number.isFinite(n) || n < 0) return '—';
+        var units = ['B','KiB','MiB','GiB','TiB'], i = 0;
+        while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+        return n.toFixed(i ? 1 : 0) + ' ' + units[i];
+    }
 });

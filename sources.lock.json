@@ -67,10 +67,10 @@
     "sha256": "9ea7890bba5a36d52104e9fa873c29dc7389303f3092d8b7bf6d42d720017b63"
   },
   "wlmb": {
-    "version": "1.1.5",
-    "asset": "wlmb-server-1.1.5-aarch64_generic.ipk",
-    "sha256": "9ad400f64b83203b9d298b195d661d9feebadb38c967a6f860523aa539606c26",
-    "url": "https://github.com/SlAlot/wlmb-server/releases/download/v1.1.5"
+    "version": "1.1.6",
+    "asset": "wlmb-server-1.1.6-aarch64_generic.ipk",
+    "sha256": "c4cb5f7c796eb411e7db5865124ddc49255e0d7723088c4fb6ff488a73a524f6",
+    "url": "https://github.com/SlAlot/wlmb-server/releases/download/v1.1.6"
   },
   "photonicat_kernel_power": {
     "repository": "https://github.com/photonicat/photonicat_openwrt",
@@ -81,13 +81,13 @@
   "luci_ui": {
     "luci-theme-apollo": {
       "repository": "https://github.com/SlAlot/luci-theme-apollo",
-      "commit": "b147ee3a24bc06cea5c8c068def5e860c05dc2f2",
-      "runtime_sha256": "9f2a4c8fdb8ff36b09de8707542d20ab0561375ee137271aaf61007ce95aa1da"
+      "commit": "d27d4cb94d5523ad6b351652f2e34770a0d786ff",
+      "runtime_sha256": "e50b547a6baae15cb83d2c9d80e697a327bbfb7bed8510e870aa4c291b35ca2d"
     },
     "luci-app-wlmbstart": {
       "repository": "https://github.com/SlAlot/luci-app-wlmbstart",
-      "commit": "008bd5d736bcaaa5a26a0bcc4d97141ffdcdb155",
-      "runtime_sha256": "6b810f36e190d511c93b2f49af690cac2cc17af94b8575b1056c55cf87e02665"
+      "commit": "fce222f945d0cd0391e4591dda84126356839dd2",
+      "runtime_sha256": "636acbb23177154381112f3b725629666140392e6161a0d8e8422fb13790fa06"
     }
   }
 }

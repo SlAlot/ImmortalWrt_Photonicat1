@@ -42,6 +42,7 @@ class BatteryIndicatorTests(unittest.TestCase):
             integration.integrate(root)
             first = rpc.read_text(encoding="utf-8")
             self.assertIn('json_add_boolean external_power "$external_power"', first)
+            self.assertIn("jsonfilter -e '@.display_percentage'", first)
             self.assertNotIn('json_add_boolean charging "$charging"', first)
             self.assertIn(other, first)
             integration.integrate(root)

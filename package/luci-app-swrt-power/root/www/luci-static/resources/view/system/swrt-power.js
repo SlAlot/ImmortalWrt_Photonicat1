@@ -7,13 +7,127 @@
 var statusCall = rpc.declare({ object: 'luci.swrt_power', method: 'status', expect: {} });
 var configureCall = rpc.declare({ object: 'luci.swrt_power', method: 'configure',
     params: [ 'mode', 'minutes', 'start', 'stop', 'revision', 'confirm' ], expect: {} });
+var capacityCall = rpc.declare({ object: 'luci.swrt_power', method: 'battery_capacity', expect: {} });
+var saveCapacityCall = rpc.declare({ object: 'luci.swrt_power', method: 'set_battery_capacity',
+    params: [ 'capacity_mah' ], expect: {} });
+var recordFullCall = rpc.declare({ object: 'luci.swrt_power', method: 'record_battery_full', expect: {} });
+var resetCalibrationCall = rpc.declare({ object: 'luci.swrt_power', method: 'reset_battery_calibration', expect: {} });
+
+function validCapacity(value) {
+    return Number.isInteger(value) && value >= 1000 && value <= 20000;
+}
+
+function capacityPanel(data, writable, refreshStatus) {
+    var presets = [6800, 3000, 4000, 5000, 6000, 7000, 8000];
+    var saved = data && data.ok === true && validCapacity(data.capacity_mah) ? data.capacity_mah : null;
+    var reference = data && data.full_reference || 0;
+    var busy = false;
+    var choice = E('select', { 'class': 'np-input', 'aria-label': '电池容量' }, [
+        E('option', { value: '', disabled: '', hidden: '' }, '无法读取')
+    ].concat(presets.map(function(value) {
+        return E('option', { value: String(value) }, (value === 6800 ? '原厂 ' : '') + value + ' mAh');
+    }), E('option', { value: 'custom' }, '自定义容量')));
+    var custom = E('input', { type: 'number', 'class': 'np-input', min: '1000', max: '20000', step: '1',
+        'aria-label': '自定义电池容量（mAh）' });
+    var customField = E('label', { 'class': 'np-info-field' }, [
+        E('span', { 'class': 'np-info-label' }, '自定义容量（mAh）'), custom
+    ]);
+    var save = E('button', { type: 'button', 'class': 'np-btn primary' }, '保存电池容量');
+    var record = E('button', { type: 'button', 'class': 'np-btn' }, '记录满电');
+    var reset = E('button', { type: 'button', 'class': 'np-btn' }, '恢复原厂估算');
+    var actions = E('div', { 'class': 'np-actions' }, [save, record, reset]);
+    actions.hidden = !writable;
+    var feedback = E('p', { 'class': 'np-hint', role: 'status' }, saved === null ? '容量设置读取失败，请刷新页面。' : '');
+    var calibration = E('p', { 'class': 'np-hint' });
+
+    function selection() { return Number(choice.value === 'custom' ? custom.value : choice.value); }
+    function updateControls() {
+        var value = selection();
+        customField.hidden = choice.value !== 'custom';
+        choice.disabled = custom.disabled = !writable || saved === null || busy;
+        save.disabled = choice.disabled || !validCapacity(value) || value === saved;
+        record.disabled = choice.disabled || value !== saved;
+        reset.disabled = choice.disabled;
+        reset.hidden = !reference;
+        calibration.textContent = reference ? '满电显示已校准 · 原始读数 ' + reference + '% 作为满电基准。' :
+            '使用原厂电压估算。确认电池充满后，可记录满电读数。';
+    }
+    choice.value = saved === null ? '' : presets.includes(saved) ? String(saved) : 'custom';
+    custom.value = saved === null ? '' : String(saved);
+    [choice, custom].forEach(function(node) {
+        node.addEventListener(node === choice ? 'change' : 'input', function() {
+            feedback.textContent = '';
+            updateControls();
+        });
+    });
+    function changeProfile(request, success, pending) {
+        busy = true;
+        feedback.textContent = pending || '正在保存…';
+        updateControls();
+        return request().then(function(reply) {
+            if (!reply || reply.ok !== true || !validCapacity(reply.capacity_mah))
+                throw new Error(reply && reply.message || '电池显示设置保存失败');
+            saved = reply.capacity_mah;
+            reference = reply.full_reference || 0;
+            choice.value = presets.includes(saved) ? String(saved) : 'custom';
+            custom.value = String(saved);
+            feedback.textContent = success();
+            return refreshStatus();
+        }).catch(function(error) {
+            feedback.textContent = error.message || '电池显示设置保存失败';
+        }).finally(function() {
+            busy = false;
+            updateControls();
+        });
+    }
+    save.addEventListener('click', function() {
+        if (save.disabled) return;
+        var value = selection();
+        return changeProfile(function() { return saveCapacityCall(value); }, function() { return '已保存 ' + saved + ' mAh。'; });
+    });
+    record.addEventListener('click', function() {
+        if (record.disabled) return;
+        ui.showModal('记录满电', [
+            E('p', {}, '保持接电，等机身最下方的黄色充电灯从呼吸变为常亮。网页百分比是电压估算，请以机身灯的提示为准。'),
+            E('p', {}, '校准约需 10 秒，请保持设备负载平稳。'),
+            E('div', { 'class': 'np-actions right' }, [
+                E('button', { type: 'button', 'class': 'np-btn', click: ui.hideModal }, '取消'),
+                E('button', { type: 'button', 'class': 'np-btn primary', click: function() {
+                    if (record.disabled) return;
+                    ui.hideModal();
+                    return changeProfile(recordFullCall, function() {
+                        return reference ? '已保存满电校准。' : '原始读数已是 100%，使用原厂估算。';
+                    }, '正在读取三次电量，请稍候…');
+                } }, '黄灯已常亮')
+            ])
+        ], 'np-root', 'np-dialog', 'swrt-power-dialog');
+    });
+    reset.addEventListener('click', function() {
+        if (reset.disabled || !reference) return;
+        return changeProfile(resetCalibrationCall, function() { return '已恢复原厂估算。'; });
+    });
+    updateControls();
+    return E('div', { 'class': 'swrt-power-capacity' }, [
+        E('div', { 'class': 'swrt-power-capacity-fields' }, [
+            E('label', { 'class': 'np-info-field' }, [E('span', { 'class': 'np-info-label' }, '电池容量'), choice]),
+            customField
+        ]),
+        E('p', { 'class': 'np-hint' }, '填写电池标签上的额定容量。更换容量会清除已有满电基准。'),
+        calibration,
+        actions,
+        feedback
+    ]);
+}
 
 return view.extend({
     handleSave: null,
     handleSaveApply: null,
     handleReset: null,
     load: function() {
-        return statusCall().catch(function() { return { ok: false, message: '电源管理服务暂不可用' }; });
+        return Promise.all([
+            statusCall().catch(function() { return { ok: false, message: '电源管理服务暂不可用' }; }),
+            capacityCall().catch(function() { return null; })
+        ]);
     },
     render: function(initial) {
         var writable = L.hasViewPermission(), latest = null, editing = false, editRevision = '';
@@ -81,8 +195,10 @@ return view.extend({
             }
             latest = data;
             var battery = data.battery;
-            percent.textContent = battery.percentage + '%';
-            meter.value = battery.percentage;
+            var display = battery.display_percentage ?? battery.percentage;
+            percent.textContent = display + '%';
+            meter.value = display;
+            percent.title = battery.full_reference ? '电压估算 · 原始读数 ' + battery.percentage + '%' : '';
             source.textContent = battery.external_power ? '外部供电' : '电池供电';
             voltage.textContent = (battery.battery_mv / 1000).toFixed(2) + ' V';
             supply.textContent = (battery.supply_mv / 1000).toFixed(2) + ' V';
@@ -173,7 +289,7 @@ return view.extend({
         var root = E('div', { id: 'swrt-power', 'class': 'np-root swrt-page' }, [
             E('link', { rel: 'stylesheet', href: L.resource('wlmb-server/panel.css') + '?v=1.1.5' }),
             E('link', { rel: 'stylesheet', href: L.resource('swrt-ui.css') + '?v=1.0.4' }),
-            E('link', { rel: 'stylesheet', href: L.resource('swrt-power.css') + '?v=1.0.5' }),
+            E('link', { rel: 'stylesheet', href: L.resource('swrt-power.css') + '?v=1.0.6' }),
             E('div', { 'class': 'np-page-heading' }, [ E('div', {}, [ E('h2', { 'class': 'np-page-title' }, '光影猫管理'),
                 E('p', { 'class': 'np-page-description' }, '电池状态与自动开关机') ]), E('span', { 'class': 'np-chip' }, '电源控制') ]),
             E('div', { 'class': 'swrt-workspace' }, [
@@ -181,7 +297,8 @@ return view.extend({
             card('电池与供电', [ E('div', { 'class': 'swrt-power-hero' }, [ percent, source ]), meter,
                 supplyHint,
                 E('details', { 'class': 'swrt-power-more', open: '' }, [ E('summary', {}, '电池详情'),
-                    E('div', { 'class': 'swrt-power-metrics' }, [ field('电池电压', voltage), field('外部电压', supply), field('主板温度', temperature) ]) ]) ]),
+                    E('div', { 'class': 'swrt-power-metrics' }, [ field('电池电压', voltage), field('外部电压', supply), field('主板温度', temperature) ]),
+                    capacityPanel(initial[1], writable, function() { return fetchStatus(false); }) ]) ]),
             card('电源模式', [ details, field('选择模式', mode), upsBox, dailyBox,
                 E('div', { 'class': 'np-actions swrt-power-actions' }, [ save, refresh ]) ],
                 E('span', { 'class': 'np-chip' }, active))
@@ -190,7 +307,7 @@ return view.extend({
             ]),
             E('p', { 'class': 'np-footer' }, 'SWRT · SlAlot')
         ]);
-        selection(); update(initial, true);
+        selection(); update(initial[0], true);
         poll.add(function() { if (!document.getElementById('swrt-power')) return Promise.resolve(); return fetchStatus(false); }, 10);
         return root;
     }

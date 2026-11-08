@@ -66,7 +66,7 @@ def integrate(root):
     indicator.write_text(patch_indicator(indicator.read_text(encoding="utf-8")), encoding="utf-8")
     rpc = root / "feeds/luci/modules/luci-mod-battstatus/root/usr/libexec/rpcd/luci.battstatus"
     text = rpc.read_text(encoding="utf-8")
-    if '# SWRT PMU battery adapter' not in text or 'json_add_boolean external_power "$external_power"' not in text:
+    if '# SWRT PMU battery adapter' not in text or '@.display_percentage' not in text:
         pattern = r"\t+ariaboard,photonicat\)\n.*?\t+;;"
         match = re.search(pattern, text, re.S)
         if not match or not any(marker in match.group() for marker in ("Need pcat-mgr", "# SWRT PMU battery adapter")):
@@ -80,7 +80,9 @@ def integrate(root):
                             external_power="$(printf '%s' "$status" | jsonfilter -e '@.external_power')"
                             [ "$external_power" = true ] && external_power=1 || external_power=0
                             json_add_boolean external_power "$external_power"
-                            json_add_int percentage "$(printf '%s' "$status" | jsonfilter -e '@.percentage')"
+                            percentage="$(printf '%s' "$status" | jsonfilter -e '@.display_percentage')"
+                            [ -n "$percentage" ] || percentage="$(printf '%s' "$status" | jsonfilter -e '@.percentage')"
+                            json_add_int percentage "$percentage"
                         else
                             json_add_boolean valid 0
                             json_add_string message '电源状态暂不可用'

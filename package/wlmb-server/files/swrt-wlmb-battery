@@ -29,7 +29,8 @@ sample() {
         # Require exactly one successful, typed report. Zero is a valid reading.
         percent=$(printf '%s' "$reading" | jq -ers '
             if length == 1 and .[0].ok == true then
-                .[0].percentage | select(type == "number") |
+                .[0] | if has("display_percentage") then .display_percentage else .percentage end |
+                select(type == "number") |
                 select(. >= 0 and . <= 100 and . == floor)
             else empty end') || percent=null
     fi

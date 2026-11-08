@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=swrt-pcat-manager
 PKG_VERSION:=2026.10.26
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PCAT_COMMIT:=0e61a4abf35c423420310311f1b2b059deba0cac
 PKG_SOURCE:=$(PCAT_COMMIT).tar.gz
 PKG_SOURCE_URL:=https://github.com/photonicat/rockchip_rk3568_pcat_manager/archive

@@ -12,6 +12,8 @@ cp -a "$repo_dir/files" "$build_dir/"
 mkdir -p "$build_dir/package/swrt"
 cp -a "$repo_dir/package/wlmb-server" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/luci-theme-apollo" "$repo_dir/package/luci-app-wlmbstart" "$build_dir/package/swrt/"
+sed -i "s/option show_battery '0'/option show_battery '1'/" \
+    "$build_dir/package/swrt/luci-app-wlmbstart/root/etc/config/wlmbstart"
 cp -a "$repo_dir/package/luci-lib-docker" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/luci-app-swrt-upgrade" "$build_dir/package/swrt/"
 cp -a "$repo_dir/package/luci-app-swrt-disk-keepalive" "$build_dir/package/swrt/"

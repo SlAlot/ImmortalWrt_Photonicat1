@@ -23,7 +23,7 @@
 
 更新上游组件时同步锁文件及对应摘要。网络面板使用固定版本的 ARM64 musl 程序，并核对 SHA-256。
 
-网络面板 1.1.5 的电量由 `swrt-wlmb-battery` 开机采集服务接入：每 20 秒只读查询现有电源服务，原子写入 RAM 中的 `/var/run/wlmb-server/battery.json`，由已有 `/api/status` 返回。采集失败立即标为不可用，停止更新超过 60 秒后由网络面板判定过期。光影猫一代不能确认实际充电电流，`charging` 保持 `null`，不把外部供电当作正在充电。接口规范见 [上游电池接入说明](https://github.com/SlAlot/wlmb-server/blob/v1.1.5/docs/BATTERY.zh-CN.md)。
+网络面板 1.1.6 的电量由 `swrt-wlmb-battery` 开机采集服务接入：每 20 秒只读查询现有电源服务，原子写入 RAM 中的 `/var/run/wlmb-server/battery.json`，由已有 `/api/status` 返回。采集失败立即标为不可用，停止更新超过 60 秒后由网络面板判定过期。光影猫一代不能确认实际充电电流，`charging` 保持 `null`，不把外部供电当作正在充电。接口规范见 [上游电池接入说明](https://github.com/SlAlot/wlmb-server/blob/v1.1.6/docs/BATTERY.zh-CN.md)。
 
 ## 成品检查
 

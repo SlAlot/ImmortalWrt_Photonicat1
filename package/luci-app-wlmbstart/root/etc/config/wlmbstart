@@ -1,0 +1,2 @@
+config homepage 'main'
+	option show_battery '0'

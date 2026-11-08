@@ -1,6 +1,6 @@
 {#
- Apollo theme by SlAlot.
- LuCI header integration derived from the Apache-2.0 LuCI Bootstrap template.
+ Apollo 主题由 SlAlot 开发。
+ 页面头部基于 LuCI Bootstrap 的 Apache-2.0 模板。
  Copyright 2008 Steven Barth; 2012 David Menting; 2008-2022 Jo-Philipp Wich.
 -#}
 {%
@@ -16,9 +16,19 @@
         <meta name="color-scheme" content="light dark">
         <meta name="darkreader-lock">
         <title>{{ striptags(`${boardinfo.hostname ?? '?'}${dispatched?.title ? ` | ${_(dispatched.title)}` : ''}`) }}</title>
-        <script>try{var npMode=localStorage.getItem('network-panel-appearance');if(['auto','light','dark'].includes(npMode))document.documentElement.dataset.theme=npMode;}catch(e){}</script>
-        <link rel="stylesheet" href="{{ media }}/compat.css?v=1.0.0-r3">
-        <link rel="stylesheet" href="{{ media }}/theme.css?v=1.0.0-r3">
+        <script>
+            (() => {
+                const root = document.documentElement;
+                try {
+                    const mode = localStorage.getItem('network-panel-appearance');
+                    if (['auto', 'light', 'dark'].includes(mode)) root.dataset.theme = mode;
+                } catch (e) {}
+                root.dataset.darkmode = String(root.dataset.theme === 'dark' ||
+                    (root.dataset.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches));
+            })();
+        </script>
+        <link rel="stylesheet" href="{{ media }}/compat.css?v=1.0.0">
+        <link rel="stylesheet" href="{{ media }}/theme.css?v=1.0.0">
         {% if (node?.css): %}<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">{% endif %}
         {% if (css): %}<style>{{ css }}</style>{% endif %}
         <script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
@@ -28,18 +38,27 @@
         {% if (!blank_page): %}
         <a class="npt-skip" href="#maincontent">跳转到主要内容</a>
         <header class="npt-topbar">
-            <button id="npt-menu-toggle" type="button" class="npt-icon-button" aria-label="打开导航菜单" aria-controls="npt-navigation" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-            <a class="npt-brand" href="{{ dispatcher.build_url('admin') }}"><span class="npt-brand-mark"><img src="{{ media }}/logo.png" alt=""></span><span>Apollo<small>{{ striptags(boardinfo.hostname ?? '?') }}</small></span></a>
+            <button id="npt-menu-toggle" type="button" class="npt-menu-trigger" aria-controls="npt-navigation" aria-expanded="false">
+                <svg class="np-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <span>菜单</span>
+            </button>
+            <a class="npt-brand" href="{{ dispatcher.build_url('admin') }}">{{ striptags(boardinfo.hostname ?? '?') }}</a>
             <span id="npt-page-title" class="npt-page-title">{{ _(dispatched?.title ?? '设备管理') }}</span>
             <div class="npt-topbar-actions">
-                <a id="npt-battery" class="npt-battery is-unknown" href="{{ dispatcher.build_url('admin/system/swrt-power') }}" aria-label="打开光影猫管理"><span>—</span></a>
+                <a id="npt-battery" class="npt-battery" hidden></a>
                 <div id="indicators"></div>
                 <button id="npt-appearance" type="button" class="npt-icon-button" aria-label="切换外观">◐</button>
             </div>
         </header>
         <button id="npt-backdrop" type="button" aria-label="关闭导航菜单" tabindex="-1"></button>
         <nav id="npt-navigation" class="npt-sidebar" aria-label="主导航">
-            <div class="npt-sidebar-heading"><span>设备管理</span><button id="npt-nav-close" type="button" class="npt-icon-button" aria-label="关闭导航菜单">×</button></div>
+            <div class="npt-drawer-actions">
+                <span class="npt-drawer-hostname">{{ striptags(boardinfo.hostname ?? '?') }}</span>
+                <button id="npt-nav-close" type="button" class="npt-icon-button" aria-label="关闭导航菜单">
+                    <svg class="np-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+            </div>
+            <p id="npt-menu-status" class="npt-menu-status" role="status">正在加载菜单…</p>
             <ul id="npt-menu"></ul>
         </nav>
         <main id="maincontent" class="container" tabindex="-1">

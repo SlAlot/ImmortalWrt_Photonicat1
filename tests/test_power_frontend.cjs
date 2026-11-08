@@ -16,14 +16,26 @@ class Element {
     fire(name) { if (!(name === 'click' && this.disabled)) return this.handlers[name]?.(); }
 }
 function walk(node) { return node instanceof Element ? [node, ...node.children.flatMap(walk)] : []; }
-function harness(readonly = false) {
+function harness(readonly = false, capacity = 6800) {
     const h = { calls: [], polls: [], modal: null, notices: [], root: null,
         data: { ok: true, revision: 'a'.repeat(64),
             battery: { percentage: 74, battery_mv: 3960, supply_mv: 5000, external_power: true, charging: null, temperature: 42 },
             car: { state: 0, timeout: 0, countdown: -1, armed: false }, events: [] } };
     const context = {
         view: { extend: value => value }, E: (tag, attrs, children) => new Element(tag, attrs, children),
-        rpc: { declare: spec => (...args) => { h.calls.push([spec.method, args]); return Promise.resolve(h.data); } },
+        rpc: { declare: spec => (...args) => {
+            h.calls.push([spec.method, args]);
+            if (spec.method === 'set_battery_capacity') {
+                capacity = args[0];
+                return Promise.resolve({ ok: true, capacity_mah: capacity, full_reference: 0 });
+            }
+            if (spec.method === 'record_battery_full' || spec.method === 'reset_battery_calibration') {
+                const full_reference = spec.method === 'record_battery_full' ? 95 : 0;
+                Object.assign(h.data.battery, { percentage: 95, display_percentage: full_reference ? 100 : 95, full_reference });
+                return Promise.resolve({ ok: true, capacity_mah: capacity, full_reference });
+            }
+            return Promise.resolve(h.data);
+        } },
         L: { hasViewPermission: () => !readonly, resource: value => {
             assert.match(value, /^[a-zA-Z0-9_.%/,-]+$/, 'L.resource takes a path, not a path containing query parameters');
             return '/resources/' + value;
@@ -36,7 +48,7 @@ function harness(readonly = false) {
         console
     };
     h.view = vm.runInNewContext('(function(){' + source + '\n})()', context);
-    h.root = h.view.render(h.data);
+    h.root = h.view.render([h.data, { ok: true, capacity_mah: capacity }]);
     h.button = text => walk(h.root).find(n => n.tag === 'button' && n.textContent === text);
     h.input = label => walk(h.root).find(n => n.attrs['aria-label'] === label);
     h.change = (label, value) => { const node = h.input(label); node.value = value; node.fire('input'); };
@@ -45,7 +57,7 @@ function harness(readonly = false) {
 (async () => {
     const h = harness();
     assert.deepEqual(walk(h.root).filter(n => n.tag === 'link').map(n => n.attrs.href), [
-        '/resources/wlmb-server/panel.css?v=1.1.5', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-power.css?v=1.0.5'
+        '/resources/wlmb-server/panel.css?v=1.1.5', '/resources/swrt-ui.css?v=1.0.4', '/resources/swrt-power.css?v=1.0.6'
     ]);
     assert.equal(h.calls.length, 0, 'Opening the page never changes policy');
     assert.equal(h.button('保存电源策略').disabled, true, 'Save is enabled only after editing');
@@ -81,6 +93,37 @@ function harness(readonly = false) {
 
     const read = harness(true);
     assert.equal(read.button('保存电源策略').disabled, true);
+    assert.equal(read.button('保存电池容量').disabled, true);
+    assert.equal(read.button('记录满电').disabled, true);
+    const batteryCapacity = harness();
+    const capacityPicker = batteryCapacity.input('电池容量'), customCapacity = batteryCapacity.input('自定义电池容量（mAh）');
+    const saveCapacity = batteryCapacity.button('保存电池容量');
+    assert.equal(capacityPicker.value, '6800');
+    assert.equal(saveCapacity.disabled, true);
+    capacityPicker.value = '5000'; capacityPicker.fire('change');
+    assert.equal(batteryCapacity.button('记录满电').disabled, true, 'Save the new capacity before recording');
+    await batteryCapacity.polls[0]();
+    assert.equal(capacityPicker.value, '5000');
+    await saveCapacity.fire('click');
+    assert.deepEqual(batteryCapacity.calls.filter(c => c[0] === 'set_battery_capacity'), [['set_battery_capacity', [5000]]]);
+    assert.equal(saveCapacity.disabled, true);
+    capacityPicker.value = 'custom'; capacityPicker.fire('change');
+    customCapacity.value = '5000.5'; customCapacity.fire('input');
+    assert.equal(saveCapacity.disabled, true);
+    customCapacity.value = '5400'; customCapacity.fire('input');
+    await saveCapacity.fire('click');
+    assert.equal(batteryCapacity.calls.findLast(c => c[0] === 'set_battery_capacity')[1][0], 5400);
+    batteryCapacity.button('记录满电').fire('click');
+    assert.equal(batteryCapacity.calls.some(c => c[0] === 'record_battery_full'), false, 'Recording needs user confirmation');
+    assert.ok(walk(batteryCapacity.modal).some(n => n.textContent.includes('黄色充电灯从呼吸变为常亮')));
+    await walk(batteryCapacity.modal).find(n => n.tag === 'button' && n.textContent === '黄灯已常亮').fire('click');
+    assert.equal(batteryCapacity.input('电量').value, 100);
+    await batteryCapacity.button('恢复原厂估算').fire('click');
+    assert.equal(batteryCapacity.input('电量').value, 95);
+    assert.equal(batteryCapacity.button('保存电源策略').disabled, true);
+    const restoredCapacity = harness(false, 5400);
+    assert.equal(restoredCapacity.input('电池容量').value, 'custom');
+    assert.equal(restoredCapacity.input('自定义电池容量（mAh）').value, '5400');
     const invalid = harness();
     invalid.data = { ok: false, message: '电源状态已过期' };
     await invalid.polls[0]();

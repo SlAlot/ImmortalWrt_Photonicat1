@@ -1,4 +1,5 @@
 import hashlib
+from collections import deque
 import importlib.util
 import io
 import json
@@ -79,8 +80,9 @@ class OfficialPowerProfileTests(unittest.TestCase):
     def test_readonly_role_cannot_modify_power_policy(self):
         acl = json.loads((ROOT / "package/luci-app-swrt-power/root/usr/share/rpcd/acl.d/luci-app-swrt-power.json").read_text(encoding="utf-8"))
         access = acl["luci-app-swrt-power"]
-        self.assertEqual(access["read"], {"ubus": {"luci.swrt_power": ["status", "battery"]}})
-        self.assertEqual(access["write"], {"ubus": {"luci.swrt_power": ["configure"]}})
+        self.assertEqual(access["read"], {"ubus": {"luci.swrt_power": ["status", "battery", "battery_capacity"]}})
+        self.assertEqual(access["write"], {"ubus": {"luci.swrt_power": ["configure", "set_battery_capacity",
+            "record_battery_full", "reset_battery_calibration"]}})
 
     @unittest.skipIf(os.name == "nt", "Official state machine executes on Linux")
     def test_official_sysfs_state_and_manual_boot_safety(self):
@@ -127,6 +129,7 @@ class PowerClientTests(unittest.TestCase):
         self.board.write_text("ariaboard,photonicat\n")
         self.pmu = {"battery-voltage": 3960, "charger-voltage": 5000,
                     "on-battery": 0, "charge-percentage": 7350, "board-temperature": 42}
+        self.pmu_samples = deque()
         self.car = {"state": 0, "timeout": 0, "countdown": -1, "armed": False}
         self.events, self.commands = [], []
         self.fail_once = None
@@ -165,7 +168,8 @@ class PowerClientTests(unittest.TestCase):
                 if self.fail_once == name:
                     response["code"] = 5
                     self.fail_once = None
-                elif name == "pmu-status": response.update(self.pmu)
+                elif name == "pmu-status":
+                    response.update(self.pmu_samples.popleft() if self.pmu_samples else self.pmu)
                 elif name == "charger-on-auto-start-get": response.update(self.car)
                 elif name == "schedule-power-event-get":
                     response["event-list"] = self.events
@@ -243,6 +247,44 @@ class PowerClientTests(unittest.TestCase):
         self.assertTrue(status["ok"], status)
         self.assertFalse(status["external_power"])
         self.assertIsNone(status["charging"])
+
+    def test_full_calibration_is_display_only_and_cleared_when_capacity_changes(self):
+        config = self.root / "etc/swrt-battery-capacity"
+        config.parent.mkdir()
+        config.write_text("5000\n")
+        self.assertEqual(self.call("battery_capacity"), {"capacity_mah": 5000, "full_reference": 0, "ok": True})
+        self.assertFalse(self.call("set_battery_capacity", {"capacity_mah": "5000"})["ok"])
+        self.assertFalse(self.call("record_battery_full")["ok"])
+        self.pmu.update({"charge-percentage": 9500, "battery-voltage": 4070, "on-battery": 1})
+        self.assertFalse(self.call("record_battery_full")["ok"])
+        self.pmu.update({"on-battery": 0, "charger-voltage": 4699})
+        self.assertFalse(self.call("record_battery_full")["ok"])
+        self.pmu["charger-voltage"] = 4880
+        self.assertEqual(self.call("record_battery_full")["full_reference"], 95)
+        self.assertEqual(config.read_text(), "5000\n95\n")
+        for raw, expected in [(0, 0), (15, 15), (80, 80), (90, 93), (94, 99), (95, 100), (100, 100)]:
+            self.pmu["charge-percentage"] = raw * 100
+            battery = self.call("status")["battery"]
+            self.assertEqual((battery["percentage"], battery["display_percentage"]), (raw, expected))
+        self.assertEqual(self.call("set_battery_capacity", {"capacity_mah": 5000})["full_reference"], 95)
+        self.assertEqual(self.call("reset_battery_calibration")["full_reference"], 0)
+        self.pmu["charge-percentage"] = 9500
+        self.assertEqual(self.call("battery")["display_percentage"], 95)
+        config.write_text("5000\n95\n")
+        self.assertEqual(self.call("set_battery_capacity", {"capacity_mah": 6800})["full_reference"], 0)
+        self.assertEqual(self.writes(), [])
+
+    def test_unstable_measurements_do_not_replace_existing_calibration(self):
+        config = self.root / "etc/swrt-battery-capacity"
+        config.parent.mkdir()
+        config.write_text("5000\n96\n")
+        self.pmu.update({"charge-percentage": 9500, "battery-voltage": 4070})
+        self.pmu_samples.extend([self.pmu, {**self.pmu, "battery-voltage": 4045}, self.pmu])
+        reply = self.call("record_battery_full")
+        self.assertFalse(reply["ok"])
+        self.assertIn("不稳定", reply["message"])
+        self.assertEqual(config.read_text(), "5000\n96\n")
+        self.assertEqual(self.writes(), [])
 
     def test_changed_timezone_blocks_daily_policy_without_writes(self):
         (self.root / "etc").mkdir()

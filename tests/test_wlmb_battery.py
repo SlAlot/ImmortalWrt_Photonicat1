@@ -92,6 +92,10 @@ class BatteryProducerTests(unittest.TestCase):
         self.client.write_text("#!/bin/sh\necho '{\"ok\":true,\"percentage\":90}'\nexit 1\n")
         self.assertIsNone(self.run_once()["percent"])
 
+    def test_calibrated_display_takes_precedence_over_raw_percentage(self):
+        self.reply({"ok": True, "percentage": 95, "display_percentage": 100})
+        self.assertEqual(self.run_once()["percent"], 100)
+
     def test_symlink_directory_is_rejected_without_writing_target(self):
         other = self.root / "other"
         other.mkdir()

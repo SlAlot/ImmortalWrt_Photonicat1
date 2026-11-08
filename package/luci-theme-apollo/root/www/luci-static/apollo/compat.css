@@ -11,8 +11,7 @@
  * Designed and built with all the love in the world @twitter by @mdo and @fat.
  */
 
-/* Variables
- * --------- */
+/* Bootstrap 兼容变量。 */
 
 :root {
 	--background-color-delta-l-sign: -1;
@@ -153,9 +152,7 @@
 	color-scheme: dark;
 }
 
-/* Reset.less
- * Props to Eric Meyer (meyerweb.com) for his CSS reset file. We're using an adapted version here	that cuts out some of the reset HTML elements we will never need here (i.e., dfn, samp, etc).
- * ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* 基于 Eric Meyer 的基础重置，保留 LuCI 使用的元素。 */
 
 * {
 	scroll-margin-top: 40px;
@@ -270,10 +267,7 @@ textarea {
 	padding: 0 6px;
 }
 
-/*
- * Scaffolding
- * Basic and global styles for generating a grid system, structural layout, and page templates
- * ------------------------------------------------------------------------------------------- */
+/* 页面基础布局。 */
 body {
 	background-color: var(--background-color-high);
 	font-family: var(--font-sans);
@@ -317,14 +311,11 @@ a:hover {
 }
 
 .nowrap:not(span) {
-/*	Sometimes you need to wrap: badges on narrow screens look weird
-	and nowrap defeats other width constraints, so exclude span */
+/* 窄屏时标签允许换行。 */
 	white-space: nowrap;
 }
 
-/* Typography.less
- * Headings, body text, lists, code, and more for a versatile and durable typography system
- * ---------------------------------------------------------------------------------------- */
+/* 基础排版。 */
 p,
 .cbi-map-descr,
 .cbi-section-descr,
@@ -515,9 +506,7 @@ pre {
 	word-wrap: break-word;
 }
 
-/* Forms.less
- * Base styles for various input types, form layouts, and states
- * ------------------------------------------------------------- */
+/* 原生表单样式。 */
 fieldset {
 	margin-bottom: 9px;
 	padding-top: 9px;
@@ -629,11 +618,11 @@ select,
 	border-radius: 3px;
 	color: var(--text-color-high);
 	position: relative;
-	pointer-events: auto; /* needed for drag-and-drop in UIDynamicList */
+	pointer-events: auto; /* 动态列表拖动所需的尺寸。 */
 	overflow: hidden;
 	word-break: break-all;
-	cursor: move; /* drag-and-drop */
-	user-select: text; /* text selection in drag-and-drop */
+	cursor: move; /* 动态列表的拖动手柄。 */
+	user-select: text; /* 拖动时避免选中文字。 */
 }
 
 .cbi-dynlist > .item::after {
@@ -652,17 +641,17 @@ select,
 	pointer-events: auto;
 }
 
-/* indication line for drag-and-drop in UIDynamicList*/
+/* 动态列表拖动位置指示线。 */
 .cbi-dynlist > .item.drag-over {
 	border-top: 1px solid var(--text-color-highest);
 }
 
-/* Make item being dragged in UIDynamicList partially transparent*/
+/* 降低拖动项的不透明度。 */
 .cbi-dynlist > .item.dragging {
 	opacity: 0.5;
 }
 
-/* prevent pointer changing when over the span element in UIDynamicList */
+/* 保持拖动手柄的光标样式。 */
 .cbi-dynlist > .item > span {
 	pointer-events: none;
 }
@@ -671,12 +660,12 @@ select,
 	display: flex;
 }
 
-/* indication line for drag-and-drop in UIDynamicList*/
+/* 动态列表拖动位置指示线。 */
 .cbi-dynlist > .add-item > .cbi-input-text.drag-over {
 	border-top: 1px solid var(--text-color-highest);
 }
 
-/* indication line for drag-and-drop in UIDynamicList*/
+/* 动态列表拖动位置指示线。 */
 .cbi-dynlist > .add-item > .cbi-button-add.drag-over {
 	border-top: 1px solid var(--text-color-highest);
 }
@@ -958,10 +947,7 @@ textarea[readonly] {
 	margin: 0;
 }
 
-/*
- * Tables.less
- * Tables for, you guessed it, tabular data
- * ---------------------------------------- */
+/* 基础表格样式。 */
 .tr { display: table-row; }
 .table[width="33%"], .th[width="33%"], .td[width="33%"] { width: 33%; }
 .table[width="100%"], .th[width="100%"], .td[width="100%"] { width: 100%; }
@@ -978,7 +964,7 @@ textarea[readonly] {
 
 .table .th, .table .td {
 	display: table-cell;
-	vertical-align: middle; /* Fixme */
+	vertical-align: middle; /* 表格按钮样式。 */
 	padding: 10px 10px 9px;
 	line-height: 18px;
 	text-align: left;
@@ -1017,9 +1003,7 @@ textarea[readonly] {
 	border-width: 0 0 2px 0;
 }
 
-/* Patterns.less
- * Repeatable UI elements outside the base styles provided from the scaffolding
- * ---------------------------------------------------------------------------- */
+/* 按钮、弹窗等公用组件。 */
 header {
 	position: sticky;
 	top: 0;
@@ -1068,7 +1052,7 @@ header {
 	background: linear-gradient(#333333, #222222);
 	box-shadow: 0 1px 3px hsla(var(--border-color-low-hsl), .25), inset 0 -1px 0 hsla(var(--border-color-low-hsl), .01);
 	padding: 0;
-	/* the redundant properties below work around a csstidy bug */
+	/* 保留重复属性以兼容旧版 csstidy。 */
 	padding-left: calc((100% - 1180px) / 2);
 	padding-right: calc((100% - 1180px) / 2);
 }
@@ -1370,7 +1354,7 @@ footer {
 	justify-content: space-between;
 	font-size: 12px;
 	color: var(--text-color-medium);
-	/* the redundant properties below work around a csstidy bug */
+	/* 保留重复属性以兼容旧版 csstidy。 */
 	padding-left: calc((100% - 940px) / 2);
 	padding-right: calc((100% - 940px) / 2);
 }
@@ -1614,9 +1598,9 @@ body.modal-overlay-active #modal_overlay {
 }
 
 .cbi-dropdown img {
-	/* the following are necessary to constrain (vector) images of any size */
-	max-height: 1.6em;  /* Adjusts image height to fit slightly larger than text line height */
-	width: auto;  /* Preserves aspect ratio */
+	/* 限制矢量设备图标的显示尺寸。 */
+	max-height: 1.6em;  /* 图标高度略大于当前文字行高。 */
+	width: auto;  /* 保持图标的宽高比。 */
 }
 
 .cbi-dropdown > ul {
@@ -2010,7 +1994,7 @@ header [data-indicator][data-style="active"] {
 	background-color: var(--primary-color-high);
 }
 
-/* LuCI specific items */
+/* LuCI 专用控件。 */
 .hidden { display: none }
 
 form.inline { display: inline; margin-bottom: 0; }

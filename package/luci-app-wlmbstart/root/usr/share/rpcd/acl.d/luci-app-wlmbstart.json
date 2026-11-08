@@ -1,6 +1,9 @@
 {
   "luci-app-wlmbstart": {
     "description": "Read Network Panel home snapshots and interface addresses",
-    "read": { "ubus": { "network-panel": ["status"], "network.interface": ["dump"] } }
+    "read": {
+      "ubus": { "network-panel": ["status"], "network.interface": ["dump"], "wlmbstart": ["cellularDevices"] },
+      "uci": ["wlmbstart"]
+    }
   }
 }

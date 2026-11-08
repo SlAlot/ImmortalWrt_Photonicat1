@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-swrt-power
-PKG_VERSION:=1.0.5
+PKG_VERSION:=1.0.7
 PKG_RELEASE:=1
 PKG_LICENSE:=AGPL-3.0-only
 PKG_MAINTAINER:=SlAlot
@@ -13,10 +13,14 @@ define Package/luci-app-swrt-power
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=SWRT Photonicat 1 power management
-  DEPENDS:=@TARGET_rockchip_armv8 +luci-base +rpcd +swrt-pcat-manager +wlmb-server +jsonfilter
+  DEPENDS:=@TARGET_rockchip_armv8 +luci-base +rpcd +swrt-pcat-manager +wlmb-server
 endef
 
 define Build/Compile
+endef
+
+define Package/luci-app-swrt-power/conffiles
+/etc/swrt-battery-capacity
 endef
 
 define Package/luci-app-swrt-power/install
